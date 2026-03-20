@@ -32,7 +32,9 @@ const els = {
   savePng: $('savePng'),
   saveWebp: $('saveWebp'),
   saveWebm: $('saveWebm'),
-  saveMp4: $('saveMp4')
+  recordProgressWrap: $('recordProgressWrap'),
+  recordProgress: $('recordProgress'),
+  recordProgressText: $('recordProgressText')
 };
 
 const ctx = els.screen.getContext('2d');
@@ -43,50 +45,9 @@ const state = {
   running: true,
   lastTime: performance.now(),
   recorderBusy: false,
-  ffmpeg: null,
-  ffmpegLoaded: false,
-  nextLayerId: 3,
+  nextLayerId: 1,
   drag: null,
-  layers: [
-    {
-      id: 1,
-      text: 'LED電光掲示板',
-      color: '#ffb300',
-      x: 48,
-      y: 54,
-      fontPx: 112,
-      fontWeight: 900,
-      fontFamily: 'biz',
-      align: 'left',
-      scroll: false,
-      speed: 120,
-      blink: false,
-      blinkMs: 900,
-      outline: true,
-      outlineColor: '#fff2cf',
-      outlineWidth: 6,
-      offset: 0
-    },
-    {
-      id: 2,
-      text: '色・位置・サイズ・フォントを自由設定',
-      color: '#6ef26b',
-      x: 48,
-      y: 206,
-      fontPx: 54,
-      fontWeight: 900,
-      fontFamily: 'noto',
-      align: 'left',
-      scroll: true,
-      speed: 120,
-      blink: false,
-      blinkMs: 900,
-      outline: false,
-      outlineColor: '#ffffff',
-      outlineWidth: 4,
-      offset: 0
-    }
-  ]
+  layers: []
 };
 
 function safeHex(value, fallback) {
@@ -103,6 +64,65 @@ function finite(value, fallback) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function iso8601BasicNow() {
+  const iso = new Date().toISOString();
+  return iso.replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+function buildDownloadName(ext) {
+  return `led-board_${iso8601BasicNow()}.${ext}`;
+}
+
+function getLayerAnchorForLeftEdge(leftEdge, align, textWidth) {
+  if (align === 'center') return leftEdge + textWidth / 2;
+  if (align === 'right') return leftEdge + textWidth;
+  return leftEdge;
+}
+
+function getScrollStartOffset(layer, config) {
+  const metrics = textMetricsPx(layer);
+  const startAnchor = getLayerAnchorForLeftEdge(config.width, layer.align, metrics.width);
+  return startAnchor - layer.x;
+}
+
+function getScrollEndOffset(layer, config) {
+  const metrics = textMetricsPx(layer);
+  const endAnchor = getLayerAnchorForLeftEdge(-metrics.width, layer.align, metrics.width);
+  return endAnchor - layer.x;
+}
+
+function getScrollDuration(layer, config) {
+  const startOffset = getScrollStartOffset(layer, config);
+  const endOffset = getScrollEndOffset(layer, config);
+  return Math.max(0, (startOffset - endOffset) / Math.max(1, layer.speed));
+}
+
+function snapshotAnimationState() {
+  return {
+    running: state.running,
+    offsets: state.layers.map((layer) => ({ id: layer.id, offset: finite(layer.offset, 0) }))
+  };
+}
+
+function restoreAnimationState(snapshot) {
+  if (!snapshot) return;
+  state.running = snapshot.running;
+  for (const saved of snapshot.offsets) {
+    const layer = state.layers.find((item) => item.id === saved.id);
+    if (layer) layer.offset = saved.offset;
+  }
+  els.toggle.textContent = state.running ? 'プレビュー停止' : 'プレビュー再開';
+}
+
+function prepareRecordingAnimation(config) {
+  state.layers.forEach((rawLayer) => {
+    const layer = normalizeLayer(rawLayer);
+    if (layer.scroll) {
+      rawLayer.offset = getScrollStartOffset(layer, config);
+    }
+  });
+}
+
 function calculateAutoDuration(baseConfig) {
   let duration = 1;
   let longestBlinkCycle = 0;
@@ -111,10 +131,7 @@ function calculateAutoDuration(baseConfig) {
     const layer = normalizeLayer(rawLayer);
 
     if (layer.scroll) {
-      const metrics = textMetricsPx(layer);
-      const scrollDistance = baseConfig.width + metrics.width + layer.fontPx;
-      const scrollCycle = scrollDistance / Math.max(1, layer.speed);
-      duration = Math.max(duration, scrollCycle);
+      duration = Math.max(duration, getScrollDuration(layer, baseConfig));
     }
 
     if (layer.blink) {
@@ -149,6 +166,22 @@ function toConfig() {
 
 function setStatus(text) {
   els.status.textContent = text;
+}
+
+function setRecordProgress(value) {
+  const clamped = Math.max(0, Math.min(1, value));
+  if (els.recordProgress) els.recordProgress.value = clamped;
+  if (els.recordProgressText) els.recordProgressText.textContent = `${Math.round(clamped * 100)}%`;
+}
+
+function showRecordProgress() {
+  if (els.recordProgressWrap) els.recordProgressWrap.hidden = false;
+  setRecordProgress(0);
+}
+
+function hideRecordProgress() {
+  if (els.recordProgressWrap) els.recordProgressWrap.hidden = true;
+  setRecordProgress(0);
 }
 
 function rgba(hex, alpha) {
@@ -705,11 +738,13 @@ function finishDrag() {
 els.screen.addEventListener('pointerup', finishDrag);
 els.screen.addEventListener('pointercancel', finishDrag);
 
-function download(blob, name) {
-  const url = URL.createObjectURL(blob);
+function download(blob, name, mimeType) {
+  const file = new File([blob], name, { type: mimeType || blob.type || 'application/octet-stream' });
+  const url = URL.createObjectURL(file);
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = name;
+  anchor.type = file.type;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
@@ -722,7 +757,7 @@ async function saveImage(type) {
   const mime = type === 'png' ? 'image/png' : 'image/webp';
   const blob = await new Promise((resolve) => els.screen.toBlob(resolve, mime, .95));
   if (!blob) throw new Error(`${type.toUpperCase()} の生成に失敗しました。`);
-  download(blob, `led-board.${type}`);
+  download(blob, buildDownloadName(type), mime);
   setStatus(`${type.toUpperCase()} を保存しました`);
 }
 
@@ -745,76 +780,73 @@ async function recordWebmBlob(seconds, fps) {
     els.toggle.textContent = 'プレビュー停止';
   }
 
+  showRecordProgress();
+  const startedAt = performance.now();
+
   return new Promise((resolve, reject) => {
-    recorder.onerror = (event) => reject(event.error || new Error('録画に失敗しました。'));
+    let rafId = 0;
+
+    const tickProgress = () => {
+      const elapsed = (performance.now() - startedAt) / 1000;
+      setRecordProgress(seconds <= 0 ? 1 : elapsed / seconds);
+      if (recorder.state !== 'inactive') {
+        rafId = requestAnimationFrame(tickProgress);
+      }
+    };
+
+    recorder.onerror = (event) => {
+      cancelAnimationFrame(rafId);
+      stream.getTracks().forEach((track) => track.stop());
+      hideRecordProgress();
+      reject(event.error || new Error('録画に失敗しました。'));
+    };
+
     recorder.onstop = () => {
+      cancelAnimationFrame(rafId);
+      setRecordProgress(1);
       stream.getTracks().forEach((track) => track.stop());
       if (!wasRunning) {
         state.running = false;
         els.toggle.textContent = 'プレビュー再開';
       }
+      setTimeout(() => hideRecordProgress(), 300);
       resolve(new Blob(chunks, { type: 'video/webm' }));
     };
+
     recorder.start(200);
+    rafId = requestAnimationFrame(tickProgress);
+
     setTimeout(() => {
       if (recorder.state !== 'inactive') recorder.stop();
-    }, seconds * 1000);
+    }, Math.max(1, seconds) * 1000);
   });
 }
 
-async function ensureFFmpeg() {
-  if (state.ffmpegLoaded) return state.ffmpeg;
-  if (!window.FFmpegWASM || !window.FFmpegUtil) throw new Error('ffmpeg.wasm の読み込みに失敗しました。');
-  const { FFmpeg } = window.FFmpegWASM;
-  const { toBlobURL } = window.FFmpegUtil;
-  const ffmpeg = new FFmpeg();
-  const base = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-  setStatus('MP4変換エンジンを読み込み中...');
-  await ffmpeg.load({
-    coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
-    wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm')
-  });
-  state.ffmpeg = ffmpeg;
-  state.ffmpegLoaded = true;
-  return ffmpeg;
-}
-
-async function toMp4(webmBlob) {
-  const ffmpeg = await ensureFFmpeg();
-  const { fetchFile } = window.FFmpegUtil;
-  await ffmpeg.writeFile('input.webm', await fetchFile(webmBlob));
-  await ffmpeg.exec(['-i', 'input.webm', '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-movflags', 'faststart', 'output.mp4']);
-  const data = await ffmpeg.readFile('output.mp4');
-  return new Blob([data.buffer], { type: 'video/mp4' });
-}
-
-async function saveVideo(format) {
+async function saveVideo() {
   if (state.recorderBusy) return;
   state.recorderBusy = true;
   els.saveWebm.disabled = true;
-  els.saveMp4.disabled = true;
+
+  const snapshot = snapshotAnimationState();
 
   try {
     const config = toConfig();
-    setStatus(`${format.toUpperCase()} 用に ${config.duration} 秒録画中...`);
+    prepareRecordingAnimation(config);
+    draw();
+    setStatus(`WebM 用に開始から終了まで ${config.duration} 秒録画中...`);
     const webm = await recordWebmBlob(config.duration, config.fps);
-    if (format === 'webm') {
-      download(webm, 'led-board.webm');
-      setStatus('WebM を保存しました');
-    } else {
-      setStatus('MP4 に変換中...');
-      const mp4 = await toMp4(webm);
-      download(mp4, 'led-board.mp4');
-      setStatus('MP4 を保存しました');
-    }
+    download(webm, buildDownloadName('webm'), 'video/webm');
+    setStatus('WebM を保存しました');
   } catch (error) {
     console.error(error);
+    hideRecordProgress();
     setStatus('保存に失敗しました');
     alert(error.message || '保存に失敗しました。');
   } finally {
+    restoreAnimationState(snapshot);
+    draw();
     state.recorderBusy = false;
     els.saveWebm.disabled = false;
-    els.saveMp4.disabled = false;
   }
 }
 
@@ -872,8 +904,7 @@ els.saveWebp.addEventListener('click', () => saveImage('webp').catch((error) => 
   setStatus('保存に失敗しました');
 }));
 
-els.saveWebm.addEventListener('click', () => saveVideo('webm'));
-els.saveMp4.addEventListener('click', () => saveVideo('mp4'));
+els.saveWebm.addEventListener('click', () => saveVideo());
 
 renderLayerControls();
 syncCanvas(toConfig());
