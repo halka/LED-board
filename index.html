@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>LED電光掲示板</title>
+  <meta name="description" content="ブラウザで動作するLED電光掲示板。背景色・文字色変更、横スクロール、ライブプレビュー、PNG/WebP/WebM/MP4保存対応。">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="hero">
+      <p class="eyebrow">Browser LED Signboard</p>
+      <h1>LED電光掲示板</h1>
+      <p class="lead">背景色と文字色を変えながら、横スクロールのLED表示をライブプレビューできます。画像はPNG / WebP、動画はWebM / MP4で保存できます。</p>
+    </header>
+
+    <main class="layout">
+      <section class="card preview-card">
+        <div class="head">
+          <div>
+            <h2>プレビュー</h2>
+            <p id="meta" class="muted">960 × 240 px</p>
+          </div>
+          <p id="status" class="status">プレビュー再生中</p>
+        </div>
+
+        <div class="canvas-wrap">
+          <canvas id="screen" width="960" height="240"></canvas>
+        </div>
+
+        <div class="stats">
+          <div><span>速度</span><strong id="speedStat">120 px/s</strong></div>
+          <div><span>LED</span><strong id="dotStat">12 px</strong></div>
+          <div><span>録画</span><strong id="recordStat">5 秒 / 30 fps</strong></div>
+        </div>
+
+        <div class="export sticky-mobile">
+          <div>
+            <p class="muted label">画像保存</p>
+            <div class="btn-grid two">
+              <button id="savePng" class="btn btn-sub">PNG保存</button>
+              <button id="saveWebp" class="btn btn-sub">WebP保存</button>
+            </div>
+          </div>
+          <div>
+            <p class="muted label">動画保存</p>
+            <div class="btn-grid two">
+              <button id="saveWebm" class="btn">WebM保存</button>
+              <button id="saveMp4" class="btn btn-accent">MP4保存</button>
+            </div>
+          </div>
+          <p class="muted note">MP4は ffmpeg.wasm を使ってブラウザ内で変換します。初回は少し重くなることがあります。</p>
+        </div>
+      </section>
+
+      <section class="card control-card">
+        <div class="head">
+          <div>
+            <h2>設定</h2>
+            <p class="muted">スマホで押しやすいUIです。</p>
+          </div>
+        </div>
+
+        <div class="form">
+          <label class="field block">
+            <span>表示テキスト</span>
+            <textarea id="message" rows="4">ようこそ！ ブラウザで動作する LED 電光掲示板です。</textarea>
+          </label>
+
+          <div class="grid two">
+            <label class="field">
+              <span>背景色</span>
+              <div class="color-row">
+                <input id="bgColor" type="color" value="#000000">
+                <input id="bgHex" type="text" value="#000000">
+              </div>
+            </label>
+            <label class="field">
+              <span>文字色</span>
+              <div class="color-row">
+                <input id="fgColor" type="color" value="#ff3b30">
+                <input id="fgHex" type="text" value="#ff3b30">
+              </div>
+            </label>
+          </div>
+
+          <div class="grid three">
+            <label class="field">
+              <span>表示サイズ</span>
+              <select id="preset">
+                <option value="960x240" selected>標準 960 × 240</option>
+                <option value="1280x240">横長 1280 × 240</option>
+                <option value="1280x320">大型 1280 × 320</option>
+                <option value="640x160">小型 640 × 160</option>
+                <option value="custom">カスタム</option>
+              </select>
+            </label>
+            <label class="field"><span>幅</span><input id="width" type="number" min="320" max="1920" step="10" value="960"></label>
+            <label class="field"><span>高さ</span><input id="height" type="number" min="120" max="640" step="10" value="240"></label>
+          </div>
+
+          <div class="grid two">
+            <label class="field">
+              <span>スクロール速度</span>
+              <div class="range-row"><input id="speed" type="range" min="20" max="480" step="10" value="120"><output id="speedOut">120 px/s</output></div>
+            </label>
+            <label class="field">
+              <span>文字倍率</span>
+              <div class="range-row"><input id="fontScale" type="range" min="0.6" max="2.2" step="0.1" value="1.2"><output id="fontScaleOut">1.2 倍</output></div>
+            </label>
+          </div>
+
+          <div class="grid two">
+            <label class="field">
+              <span>LEDサイズ</span>
+              <div class="range-row"><input id="dotSize" type="range" min="6" max="24" step="1" value="12"><output id="dotSizeOut">12 px</output></div>
+            </label>
+            <label class="field">
+              <span>LED間隔</span>
+              <div class="range-row"><input id="gap" type="range" min="1" max="10" step="1" value="3"><output id="gapOut">3 px</output></div>
+            </label>
+          </div>
+
+          <div class="grid two">
+            <label class="field">
+              <span>録画FPS</span>
+              <div class="range-row"><input id="fps" type="range" min="10" max="60" step="1" value="30"><output id="fpsOut">30 fps</output></div>
+            </label>
+            <label class="field">
+              <span>録画秒数</span>
+              <div class="range-row"><input id="duration" type="range" min="1" max="30" step="1" value="5"><output id="durationOut">5 秒</output></div>
+            </label>
+          </div>
+
+          <div class="btn-grid two top-gap">
+            <button id="toggle" class="btn">プレビュー停止</button>
+            <button id="reset" class="btn btn-sub">位置リセット</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+  <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+  <script src="./script.js"></script>
+</body>
+</html>
