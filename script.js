@@ -1,4 +1,5 @@
 const $ = (id) => document.getElementById(id);
+const FONT_FAMILY = '"BIZ UDPGothic","BIZ UDPゴシック","Noto Sans JP","Yu Gothic","Meiryo",sans-serif';
 
 const els = {
   displayMode: $('displayMode'),
@@ -56,9 +57,9 @@ const maskCanvas = document.createElement('canvas');
 const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
 
 const PRESETS = {
+  '1600x400': [1600, 400],
   '1280x320': [1280, 320],
   '960x240': [960, 240],
-  '1280x240': [1280, 240],
   '640x160': [640, 160]
 };
 
@@ -69,7 +70,7 @@ const THEMES = {
     fg: '#ffb300',
     accent: '#7dff7a',
     note: '#ffd84d',
-    recommendedSize: '1280x320'
+    recommendedSize: '1600x400'
   },
   'station-green': {
     label: '駅風グリーン',
@@ -77,7 +78,7 @@ const THEMES = {
     fg: '#86ff67',
     accent: '#d9ffd0',
     note: '#86ff67',
-    recommendedSize: '1280x320'
+    recommendedSize: '1600x400'
   },
   'station-red': {
     label: '駅風警告レッド',
@@ -85,11 +86,9 @@ const THEMES = {
     fg: '#ff6b57',
     accent: '#ffd5cf',
     note: '#ff6b57',
-    recommendedSize: '1280x320'
+    recommendedSize: '1600x400'
   },
-  custom: {
-    label: 'カスタム'
-  }
+  custom: { label: 'カスタム' }
 };
 
 const state = {
@@ -110,12 +109,12 @@ function setStatus(text) {
   els.status.textContent = text;
 }
 
-function safeHex(value, fallback) {
-  return /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : fallback;
-}
-
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function safeHex(value, fallback) {
+  return /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : fallback;
 }
 
 function rgba(hex, alpha) {
@@ -150,12 +149,12 @@ function getConfig() {
     fg: safeHex(els.fgHex.value.trim(), '#ffb300'),
     accent: safeHex(els.accentHex.value.trim(), '#7dff7a'),
     noteColor: safeHex(els.noteHex.value.trim(), '#ffd84d'),
-    width: Math.max(320, Number(els.width.value) || 1280),
-    height: Math.max(120, Number(els.height.value) || 320),
+    width: Math.max(320, Number(els.width.value) || 1600),
+    height: Math.max(120, Number(els.height.value) || 400),
     speed: Math.max(20, Number(els.speed.value) || 120),
-    fontScale: Math.max(0.6, Number(els.fontScale.value) || 1.2),
-    dotSize: Math.max(6, Number(els.dotSize.value) || 12),
-    gap: Math.max(1, Number(els.gap.value) || 3),
+    fontScale: Math.max(0.6, Number(els.fontScale.value) || 1),
+    dotSize: Math.max(6, Number(els.dotSize.value) || 10),
+    gap: Math.max(1, Number(els.gap.value) || 2),
     fps: Math.max(10, Number(els.fps.value) || 30),
     duration: Math.max(1, Number(els.duration.value) || 5)
   };
@@ -185,10 +184,9 @@ function syncCanvas(config) {
   els.meta.textContent = `${config.width} × ${config.height} px`;
 }
 
-function applyTheme(themeKey, options = {}) {
+function applyTheme(themeKey, { resize = true } = {}) {
   const theme = THEMES[themeKey];
   if (!theme || themeKey === 'custom') return;
-  const shouldResize = options.resize !== false;
   els.bgColor.value = theme.bg;
   els.bgHex.value = theme.bg;
   els.fgColor.value = theme.fg;
@@ -197,7 +195,7 @@ function applyTheme(themeKey, options = {}) {
   els.accentHex.value = theme.accent;
   els.noteColor.value = theme.note;
   els.noteHex.value = theme.note;
-  if (shouldResize && theme.recommendedSize) {
+  if (resize && theme.recommendedSize) {
     const [width, height] = PRESETS[theme.recommendedSize];
     els.preset.value = theme.recommendedSize;
     els.width.value = width;
@@ -230,29 +228,6 @@ function bindColor(colorEl, hexEl, fallback) {
   });
 }
 
-function makePalette(config) {
-  return {
-    offFill: tone(config.bg, 24),
-    offShadow: 'transparent',
-    lit: {
-      fill: config.fg,
-      shadow: rgba(config.fg, 0.28)
-    },
-    accent: {
-      fill: config.accent,
-      shadow: rgba(config.accent, 0.24)
-    },
-    note: {
-      fill: config.noteColor,
-      shadow: rgba(config.noteColor, 0.26)
-    },
-    dim: {
-      fill: tone(config.bg, 52),
-      shadow: 'transparent'
-    }
-  };
-}
-
 function clearMask(width, height) {
   maskCanvas.width = width;
   maskCanvas.height = height;
@@ -271,17 +246,71 @@ function mergeMask(cells, id) {
   }
 }
 
+function fontMetrics(text, size, weight = 900) {
+  maskCtx.font = `${weight} ${size}px ${FONT_FAMILY}`;
+  const metrics = maskCtx.measureText(text || ' ');
+  const ascent = metrics.actualBoundingBoxAscent || size * 0.8;
+  const descent = metrics.actualBoundingBoxDescent || size * 0.2;
+  return {
+    width: metrics.width,
+    ascent,
+    descent,
+    height: ascent + descent,
+    size,
+    weight
+  };
+}
+
+function fitText(text, maxWidth, maxHeight, weight = 900, minSize = 4) {
+  const start = Math.max(minSize, Math.floor(maxHeight));
+  for (let size = start; size >= minSize; size -= 1) {
+    const metrics = fontMetrics(text, size, weight);
+    if (metrics.width <= maxWidth && metrics.height <= maxHeight) {
+      return metrics;
+    }
+  }
+  return fontMetrics(text, minSize, weight);
+}
+
+function renderTextBlock(cells, id, text, box, { align = 'left', weight = 900 } = {}) {
+  clearMask(maskCanvas.width, maskCanvas.height);
+  const metrics = fitText(text, box.width, box.height, weight);
+  maskCtx.fillStyle = '#fff';
+  maskCtx.textBaseline = 'alphabetic';
+  if (align === 'center') maskCtx.textAlign = 'center';
+  else if (align === 'right') maskCtx.textAlign = 'right';
+  else maskCtx.textAlign = 'left';
+  maskCtx.font = `${metrics.weight} ${metrics.size}px ${FONT_FAMILY}`;
+
+  const x = align === 'center'
+    ? box.x + box.width / 2
+    : align === 'right'
+      ? box.x + box.width
+      : box.x;
+  const y = box.y + (box.height + metrics.ascent - metrics.descent) / 2;
+  maskCtx.fillText(text, x, y);
+  mergeMask(cells, id);
+}
+
+function drawLine(cells, id, x, y, width, height) {
+  clearMask(maskCanvas.width, maskCanvas.height);
+  maskCtx.fillStyle = '#fff';
+  maskCtx.fillRect(x, y, width, height);
+  mergeMask(cells, id);
+}
+
+function makePalette(config) {
+  return {
+    offFill: tone(config.bg, 24),
+    lit: { fill: config.fg, shadow: rgba(config.fg, 0.28) },
+    accent: { fill: config.accent, shadow: rgba(config.accent, 0.24) },
+    note: { fill: config.noteColor, shadow: rgba(config.noteColor, 0.26) },
+    dim: { fill: tone(config.bg, 54), shadow: 'transparent' }
+  };
+}
+
 function scrollKey(config) {
-  return [
-    config.message,
-    config.bg,
-    config.fg,
-    config.width,
-    config.height,
-    config.dotSize,
-    config.gap,
-    config.fontScale
-  ].join('|');
+  return [config.message, config.bg, config.fg, config.width, config.height, config.dotSize, config.gap, config.fontScale].join('|');
 }
 
 function stationKey(config) {
@@ -308,17 +337,17 @@ function buildScrollPattern(config) {
   const step = config.dotSize + config.gap;
   const cols = Math.max(1, Math.floor(config.width / step));
   const rows = Math.max(1, Math.floor(config.height / step));
-  const fontSize = Math.max(16, Math.floor(rows * config.dotSize * 0.92 * config.fontScale));
-  const padX = config.dotSize * 2;
+  const fontSize = Math.max(8, Math.floor(rows * 0.68 * config.fontScale));
+  const padX = Math.max(4, Math.floor(cols * 0.04));
 
-  maskCtx.font = `900 ${fontSize}px "BIZ UDPGothic","Noto Sans JP","Yu Gothic","Meiryo",sans-serif`;
+  maskCtx.font = `900 ${fontSize}px ${FONT_FAMILY}`;
   const textWidth = Math.ceil(maskCtx.measureText(config.message).width + padX * 2);
 
   clearMask(Math.max(textWidth, cols + padX * 2), rows);
   maskCtx.fillStyle = '#fff';
   maskCtx.textBaseline = 'middle';
   maskCtx.textAlign = 'left';
-  maskCtx.font = `900 ${fontSize}px "BIZ UDPGothic","Noto Sans JP","Yu Gothic","Meiryo",sans-serif`;
+  maskCtx.font = `900 ${fontSize}px ${FONT_FAMILY}`;
   maskCtx.fillText(config.message, padX, rows / 2 + fontSize * 0.02);
 
   const cells = new Uint8Array(maskCanvas.width * maskCanvas.height);
@@ -346,7 +375,7 @@ function getScrollPattern(config) {
   return state.scrollPattern;
 }
 
-function drawStationLayer(config, showNote) {
+function buildStationPattern(config, showNote) {
   syncCanvas(config);
   const step = config.dotSize + config.gap;
   const cols = Math.max(1, Math.floor(config.width / step));
@@ -355,54 +384,45 @@ function drawStationLayer(config, showNote) {
 
   clearMask(cols, rows);
 
-  const topY = Math.max(0.8, rows * 0.14);
-  const midY = Math.max(2, Math.floor(rows * 0.56));
-  const leftPad = Math.max(2, Math.floor(cols * 0.03));
-  const rightPad = Math.max(2, Math.floor(cols * 0.03));
-  const depX = Math.floor(cols * 0.63);
-  const carsX = Math.floor(cols * 0.82);
+  const padX = Math.max(2, Math.floor(cols * 0.03));
+  const padY = Math.max(1, Math.floor(rows * 0.10));
+  const boxGap = Math.max(2, Math.floor(cols * 0.015));
+  const topBandH = Math.max(8, Math.floor(rows * 0.58));
+  const bottomBandY = topBandH + 1;
+  const bottomBandH = rows - bottomBandY - 1;
 
-  maskCtx.fillStyle = '#fff';
-  maskCtx.fillRect(0, 0, cols, 1);
-  maskCtx.fillRect(0, rows - 1, cols, 1);
-  maskCtx.fillRect(0, midY, cols, 1);
-  maskCtx.fillRect(depX - 2, 0, 1, midY);
-  maskCtx.fillRect(carsX - 2, 0, 1, midY);
-  mergeMask(cells, 4);
+  const serviceW = Math.max(8, Math.floor(cols * 0.14));
+  const depW = Math.max(10, Math.floor(cols * 0.17));
+  const carsW = Math.max(8, Math.floor(cols * 0.11));
+  const contentW = cols - padX * 2 - boxGap * 3;
+  const destW = Math.max(12, contentW - serviceW - depW - carsW);
 
-  clearMask(cols, rows);
-  const mainFont = Math.max(6, Math.floor(rows * 0.34 * config.fontScale));
-  const destFont = Math.max(6, Math.floor(rows * 0.37 * config.fontScale));
-  const timeFont = Math.max(6, Math.floor(rows * 0.34 * config.fontScale));
-  const subFont = Math.max(5, Math.floor(rows * 0.2 * config.fontScale));
+  const xService = padX;
+  const xDest = xService + serviceW + boxGap;
+  const xDep = xDest + destW + boxGap;
+  const xCars = xDep + depW + boxGap;
 
-  maskCtx.fillStyle = '#fff';
-  maskCtx.textBaseline = 'top';
-  maskCtx.textAlign = 'left';
+  drawLine(cells, 4, 0, 0, cols, 1);
+  drawLine(cells, 4, 0, rows - 1, cols, 1);
+  drawLine(cells, 4, 0, topBandH, cols, 1);
+  drawLine(cells, 4, xDest - Math.ceil(boxGap / 2), 0, 1, topBandH);
+  drawLine(cells, 4, xDep - Math.ceil(boxGap / 2), 0, 1, topBandH);
+  drawLine(cells, 4, xCars - Math.ceil(boxGap / 2), 0, 1, topBandH);
 
-  maskCtx.font = `900 ${mainFont}px "BIZ UDPGothic","Noto Sans JP","Yu Gothic","Meiryo",sans-serif`;
-  maskCtx.fillText(config.service, leftPad, topY);
-  mergeMask(cells, 2);
+  const topBoxY = padY;
+  const topBoxH = topBandH - padY * 2;
+  renderTextBlock(cells, 2, config.service, { x: xService, y: topBoxY, width: serviceW, height: topBoxH }, { align: 'left' });
+  renderTextBlock(cells, 1, config.destination, { x: xDest, y: topBoxY, width: destW, height: topBoxH }, { align: 'left' });
+  renderTextBlock(cells, 1, config.departure, { x: xDep, y: topBoxY, width: depW, height: topBoxH }, { align: 'center' });
+  renderTextBlock(cells, 1, config.cars, { x: xCars, y: topBoxY, width: carsW, height: topBoxH }, { align: 'center' });
 
-  clearMask(cols, rows);
-  maskCtx.fillStyle = '#fff';
-  maskCtx.textBaseline = 'top';
-  maskCtx.textAlign = 'left';
-  maskCtx.font = `900 ${destFont}px "BIZ UDPGothic","Noto Sans JP","Yu Gothic","Meiryo",sans-serif`;
-  maskCtx.fillText(config.destination, Math.max(leftPad + 10, Math.floor(cols * 0.2)), topY - 1);
-  maskCtx.font = `900 ${timeFont}px "BIZ UDPGothic","Noto Sans JP","Yu Gothic","Meiryo",sans-serif`;
-  maskCtx.fillText(config.departure, depX, topY);
-  maskCtx.fillText(config.cars, carsX, topY);
-  mergeMask(cells, 1);
-
-  if (showNote) {
-    clearMask(cols, rows);
-    maskCtx.fillStyle = '#fff';
-    maskCtx.textBaseline = 'top';
-    maskCtx.textAlign = 'left';
-    maskCtx.font = `900 ${subFont}px "BIZ UDPGothic","Noto Sans JP","Yu Gothic","Meiryo",sans-serif`;
-    maskCtx.fillText(config.note, leftPad, midY + Math.max(1, Math.floor(rows * 0.12)));
-    mergeMask(cells, 3);
+  if (showNote && bottomBandH > 4) {
+    renderTextBlock(cells, 3, config.note, {
+      x: padX,
+      y: bottomBandY + Math.max(1, Math.floor(rows * 0.03)),
+      width: cols - padX * 2,
+      height: bottomBandH - Math.max(1, Math.floor(rows * 0.05))
+    }, { align: 'left' });
   }
 
   return {
@@ -417,8 +437,8 @@ function drawStationLayer(config, showNote) {
 function getStationPattern(config) {
   const key = stationKey(config);
   if (!state.stationPatternOn || !state.stationPatternOff || state.stationCacheKey !== key) {
-    state.stationPatternOn = drawStationLayer(config, true);
-    state.stationPatternOff = drawStationLayer(config, false);
+    state.stationPatternOn = buildStationPattern(config, true);
+    state.stationPatternOff = buildStationPattern(config, false);
     state.stationCacheKey = key;
   }
   const blinkOn = !config.blinkEnabled || ((performance.now() % (config.blinkMs * 2)) < config.blinkMs);
@@ -449,7 +469,7 @@ function drawDots(pattern, config) {
       ctx.arc(cx, cy, cellId ? radius : radius * 0.92, 0, Math.PI * 2);
       if (style) {
         ctx.fillStyle = style.fill;
-        ctx.shadowBlur = config.dotSize * 1.12;
+        ctx.shadowBlur = config.dotSize * 1.1;
         ctx.shadowColor = style.shadow;
       } else {
         ctx.fillStyle = pattern.palette.offFill;
@@ -463,14 +483,12 @@ function drawDots(pattern, config) {
 
 function draw() {
   const config = getConfig();
+
   if (config.mode === 'scroll') {
     const pattern = getScrollPattern(config);
     const cycle = pattern.glyphWidth + pattern.cols + 2;
     const offsetCells = state.offsetPx / pattern.step;
-    const visible = {
-      ...pattern,
-      cells: new Uint8Array(pattern.cols * pattern.rows)
-    };
+    const visible = { ...pattern, cells: new Uint8Array(pattern.cols * pattern.rows) };
 
     for (let row = 0; row < pattern.rows; row += 1) {
       for (let col = 0; col < pattern.cols; col += 1) {
@@ -486,14 +504,13 @@ function draw() {
     return;
   }
 
-  const stationPattern = getStationPattern(config);
-  drawDots(stationPattern, config);
+  drawDots(getStationPattern(config), config);
 }
 
 function updateReadouts() {
   const config = getConfig();
   els.speedOut.value = `${config.speed} px/s`;
-  els.fontScaleOut.value = `${config.fontScale.toFixed(1)} 倍`;
+  els.fontScaleOut.value = `${config.fontScale.toFixed(2)} 倍`;
   els.dotSizeOut.value = `${config.dotSize} px`;
   els.gapOut.value = `${config.gap} px`;
   els.fpsOut.value = `${config.fps} fps`;
@@ -509,7 +526,7 @@ function updateReadouts() {
 }
 
 function syncPreset() {
-  const key = `${Math.max(320, Number(els.width.value) || 1280)}x${Math.max(120, Number(els.height.value) || 320)}`;
+  const key = `${Math.max(320, Number(els.width.value) || 1600)}x${Math.max(120, Number(els.height.value) || 400)}`;
   els.preset.value = PRESETS[key] ? key : 'custom';
 }
 
@@ -529,34 +546,22 @@ async function saveImage(type) {
   draw();
   const mime = type === 'png' ? 'image/png' : 'image/webp';
   const blob = await new Promise((resolve) => els.screen.toBlob(resolve, mime, 0.95));
-  if (!blob) {
-    throw new Error(`${type.toUpperCase()} の生成に失敗しました。`);
-  }
+  if (!blob) throw new Error(`${type.toUpperCase()} の生成に失敗しました。`);
   download(blob, `led-board.${type}`);
   setStatus(`${type.toUpperCase()} を保存しました`);
 }
 
 async function recordWebmBlob(seconds, fps) {
-  if (!window.MediaRecorder) {
-    throw new Error('このブラウザは MediaRecorder に対応していません。');
-  }
+  if (!window.MediaRecorder) throw new Error('このブラウザは MediaRecorder に対応していません。');
   const stream = els.screen.captureStream(fps);
   const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
     .find((value) => MediaRecorder.isTypeSupported(value)) || '';
-  if (!mime) {
-    throw new Error('このブラウザは WebM 録画に対応していません。');
-  }
+  if (!mime) throw new Error('このブラウザは WebM 録画に対応していません。');
 
-  const recorder = new MediaRecorder(stream, {
-    mimeType: mime,
-    videoBitsPerSecond: 6_000_000
-  });
-
+  const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
   const chunks = [];
   recorder.ondataavailable = (event) => {
-    if (event.data && event.data.size > 0) {
-      chunks.push(event.data);
-    }
+    if (event.data && event.data.size > 0) chunks.push(event.data);
   };
 
   const wasRunning = state.running;
@@ -577,18 +582,14 @@ async function recordWebmBlob(seconds, fps) {
     };
     recorder.start(200);
     setTimeout(() => {
-      if (recorder.state !== 'inactive') {
-        recorder.stop();
-      }
+      if (recorder.state !== 'inactive') recorder.stop();
     }, seconds * 1000);
   });
 }
 
 async function ensureFFmpeg() {
   if (state.ffmpegLoaded) return state.ffmpeg;
-  if (!window.FFmpegWASM || !window.FFmpegUtil) {
-    throw new Error('ffmpeg.wasm の読み込みに失敗しました。');
-  }
+  if (!window.FFmpegWASM || !window.FFmpegUtil) throw new Error('ffmpeg.wasm の読み込みに失敗しました。');
   const { FFmpeg } = window.FFmpegWASM;
   const { toBlobURL } = window.FFmpegUtil;
   const ffmpeg = new FFmpeg();
@@ -624,7 +625,6 @@ async function saveVideo(format) {
   state.recorderBusy = true;
   els.saveWebm.disabled = true;
   els.saveMp4.disabled = true;
-
   try {
     const config = getConfig();
     setStatus(`${format.toUpperCase()} 用に ${config.duration} 秒録画中...`);
@@ -658,9 +658,7 @@ function tick(now) {
     const pattern = getScrollPattern(config);
     state.offsetPx += config.speed * dt;
     const cyclePx = (pattern.glyphWidth + pattern.cols + 2) * pattern.step;
-    if (state.offsetPx >= cyclePx) {
-      state.offsetPx = 0;
-    }
+    if (state.offsetPx >= cyclePx) state.offsetPx = 0;
   }
 
   draw();
@@ -679,10 +677,6 @@ els.theme.addEventListener('change', () => {
 });
 
 els.displayMode.addEventListener('change', () => {
-  if (els.displayMode.value === 'station' && els.theme.value === 'custom') {
-    applyTheme('station-orange', { resize: false });
-    els.theme.value = 'station-orange';
-  }
   updateReadouts();
   invalidateAll();
   setStatus(els.displayMode.value === 'station' ? '駅風発車標モードに切り替えました' : '横スクロールモードに切り替えました');
