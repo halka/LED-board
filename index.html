@@ -13,7 +13,7 @@
       <p class="eyebrow">Browser LED Signboard</p>
       <h1>LED電光掲示板</h1>
       <p class="lead">
-        制限なしの自由配置モードです。文字ごとに色・位置・サイズ・フォント・縁取り・点滅・スクロールを設定できます。
+        制限なしの自由配置モードです。文字ごとに色・位置・サイズ・フォント・縁取り・点滅・スクロールを設定でき、文字はLEDドット化しつつ、指定色をそのまま使って描画します。
         プレビュー上で文字をドラッグして位置を動かせるほか、レイヤーの前後順も変更できます。
       </p>
     </header>
@@ -25,7 +25,7 @@
             <h2>プレビュー</h2>
             <p id="meta" class="muted">1280 × 320 px</p>
           </div>
-          <p id="status" class="status">プレビュー再生中</p>i
+          <p id="status" class="status">プレビュー再生中</p>
         </div>
 
         <div class="canvas-wrap">
@@ -104,8 +104,8 @@
                 <input id="fps" type="number" value="30" step="1">
               </label>
               <label class="field">
-                <span>録画秒数</span>
-                <input id="duration" type="number" value="5" step="1">
+                <span>録画秒数(自動)</span>
+                <input id="duration" type="text" value="自動計算" readonly>
               </label>
             </div>
           </div>

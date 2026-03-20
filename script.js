@@ -55,6 +55,7 @@ const state = {
       x: 48,
       y: 54,
       fontPx: 112,
+      fontWeight: 900,
       fontFamily: 'biz',
       align: 'left',
       scroll: false,
@@ -73,6 +74,7 @@ const state = {
       x: 48,
       y: 206,
       fontPx: 54,
+      fontWeight: 900,
       fontFamily: 'noto',
       align: 'left',
       scroll: true,
@@ -101,15 +103,47 @@ function finite(value, fallback) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function calculateAutoDuration(baseConfig) {
+  let duration = 1;
+  let longestBlinkCycle = 0;
+
+  for (const rawLayer of state.layers) {
+    const layer = normalizeLayer(rawLayer);
+
+    if (layer.scroll) {
+      const metrics = textMetricsPx(layer);
+      const scrollDistance = baseConfig.width + metrics.width + layer.fontPx;
+      const scrollCycle = scrollDistance / Math.max(1, layer.speed);
+      duration = Math.max(duration, scrollCycle);
+    }
+
+    if (layer.blink) {
+      const blinkCycle = (Math.max(1, layer.blinkMs) * 2) / 1000;
+      longestBlinkCycle = Math.max(longestBlinkCycle, blinkCycle);
+      duration = Math.max(duration, blinkCycle);
+    }
+  }
+
+  if (longestBlinkCycle > 0) {
+    duration = Math.ceil(duration / longestBlinkCycle) * longestBlinkCycle;
+  }
+
+  duration = Math.ceil(duration * baseConfig.fps) / baseConfig.fps;
+  return Math.max(1, Number(duration.toFixed(3)));
+}
+
 function toConfig() {
-  return {
+  const baseConfig = {
     width: positive(els.width.value, 1280),
     height: positive(els.height.value, 320),
     bg: safeHex(els.bgHex.value.trim(), '#050505'),
     dotSize: positive(els.dotSize.value, 10),
     gap: finite(els.gap.value, 2),
-    fps: positive(els.fps.value, 30),
-    duration: positive(els.duration.value, 5)
+    fps: positive(els.fps.value, 30)
+  };
+  return {
+    ...baseConfig,
+    duration: calculateAutoDuration(baseConfig)
   };
 }
 
@@ -145,6 +179,7 @@ function syncCanvas(config) {
   els.meta.textContent = `${config.width} × ${config.height} px`;
   els.dotStat.textContent = `${config.dotSize} px / gap ${config.gap} px`;
   els.recordStat.textContent = `${config.duration} 秒 / ${config.fps} fps`;
+  if (els.duration) els.duration.value = `${config.duration} 秒`;
   els.layerStat.textContent = String(state.layers.length);
 }
 
@@ -160,6 +195,7 @@ function normalizeLayer(layer) {
     x: finite(layer.x, 0),
     y: finite(layer.y, 0),
     fontPx: positive(layer.fontPx, 48),
+    fontWeight: positive(layer.fontWeight, 400),
     speed: positive(layer.speed, 120),
     blinkMs: positive(layer.blinkMs, 900),
     outlineWidth: positive(layer.outlineWidth, 4),
@@ -199,7 +235,7 @@ function renderLayerControls() {
         <textarea class="layer-input" data-id="${item.id}" data-key="text" rows="3">${escapeHtml(item.text)}</textarea>
       </label>
 
-      <div class="grid three">
+      <div class="grid four">
         <label class="field">
           <span>文字色</span>
           <div class="color-row">
@@ -210,6 +246,10 @@ function renderLayerControls() {
         <label class="field">
           <span>文字サイズ(px)</span>
           <input class="layer-number" data-id="${item.id}" data-key="fontPx" type="number" value="${item.fontPx}" step="1">
+        </label>
+        <label class="field">
+          <span>ウェイト</span>
+          <input class="layer-number" data-id="${item.id}" data-key="fontWeight" type="number" value="${item.fontWeight}" step="100">
         </label>
         <label class="field">
           <span>フォント</span>
@@ -309,7 +349,7 @@ function updateLayer(id, key, rawValue, inputType = 'text') {
     layer[key] = Boolean(rawValue);
   } else if (key === 'color' || key === 'outlineColor') {
     layer[key] = safeHex(String(rawValue).trim(), layer[key] || '#ffffff');
-  } else if (['x', 'y', 'fontPx', 'speed', 'blinkMs', 'outlineWidth'].includes(key)) {
+  } else if (['x', 'y', 'fontPx', 'fontWeight', 'speed', 'blinkMs', 'outlineWidth'].includes(key)) {
     layer[key] = Number(rawValue);
   } else {
     layer[key] = rawValue;
@@ -484,7 +524,7 @@ function shouldShowLayer(layer, now) {
 
 function textMetricsPx(layer) {
   const item = normalizeLayer(layer);
-  ctx.font = `900 ${item.fontPx}px ${fontFamilyCss(item.fontFamily)}`;
+  ctx.font = `${item.fontWeight} ${item.fontPx}px ${fontFamilyCss(item.fontFamily)}`;
   const width = ctx.measureText(item.text || ' ').width;
   const height = item.fontPx;
   return { width, height };
@@ -542,7 +582,7 @@ function buildColorCells(config, now) {
     maskCtx.textAlign = layer.align;
     maskCtx.lineJoin = 'round';
     maskCtx.lineCap = 'round';
-    maskCtx.font = `900 ${fontCells}px ${fontFamilyCss(layer.fontFamily)}`;
+    maskCtx.font = `${layer.fontWeight} ${fontCells}px ${fontFamilyCss(layer.fontFamily)}`;
 
     if (layer.outline && positive(layer.outlineWidth, 4) > 0) {
       maskCtx.strokeStyle = '#fff';
@@ -554,7 +594,7 @@ function buildColorCells(config, now) {
       maskCtx.textAlign = layer.align;
       maskCtx.lineJoin = 'round';
       maskCtx.lineCap = 'round';
-      maskCtx.font = `900 ${fontCells}px ${fontFamilyCss(layer.fontFamily)}`;
+      maskCtx.font = `${layer.fontWeight} ${fontCells}px ${fontFamilyCss(layer.fontFamily)}`;
     }
 
     maskCtx.fillStyle = '#fff';
@@ -571,8 +611,8 @@ function draw() {
   const { cols, rows, step, colors } = buildColorCells(config, now);
   const radius = config.dotSize / 2;
   const offFill = tone(config.bg, 24);
-  // 点灯中のドットはユーザー指定色をそのまま描画し、透過や発光演出は加えない。
 
+  ctx.clearRect(0, 0, config.width, config.height);
   ctx.fillStyle = config.bg;
   ctx.fillRect(0, 0, config.width, config.height);
 
@@ -581,17 +621,16 @@ function draw() {
     for (let col = 0; col < cols; col += 1) {
       const cx = col * step + radius + config.gap / 2;
       const color = colors[row * cols + col];
+
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+
       if (color) {
         ctx.fillStyle = color;
-        ctx.shadowBlur = 0;
-        ctx.shadowColor = 'transparent';
       } else {
         ctx.fillStyle = offFill;
-        ctx.shadowBlur = 0;
-        ctx.shadowColor = 'transparent';
       }
+
       ctx.fill();
     }
   }
@@ -802,7 +841,7 @@ els.addLayer.addEventListener('click', () => {
   setStatus('文字を追加しました');
 });
 
-[els.width, els.height, els.dotSize, els.gap, els.fps, els.duration].forEach((node) => {
+[els.width, els.height, els.dotSize, els.gap, els.fps].forEach((node) => {
   node.addEventListener('input', () => {
     syncCanvas(toConfig());
     setStatus('全体設定を更新しました');
