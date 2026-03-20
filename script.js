@@ -571,6 +571,7 @@ function draw() {
   const { cols, rows, step, colors } = buildColorCells(config, now);
   const radius = config.dotSize / 2;
   const offFill = tone(config.bg, 24);
+  // 点灯中のドットはユーザー指定色をそのまま描画し、透過や発光演出は加えない。
 
   ctx.fillStyle = config.bg;
   ctx.fillRect(0, 0, config.width, config.height);
@@ -584,14 +585,14 @@ function draw() {
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       if (color) {
         ctx.fillStyle = color;
-        ctx.shadowBlur = config.dotSize * 1.15;
-        ctx.shadowColor = rgba(color, .28);
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = 'transparent';
       } else {
         ctx.fillStyle = offFill;
         ctx.shadowBlur = 0;
+        ctx.shadowColor = 'transparent';
       }
       ctx.fill();
-      ctx.shadowBlur = 0;
     }
   }
 }
