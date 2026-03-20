@@ -35,7 +35,7 @@ button, input, textarea, select { font: inherit; }
 button, input[type="range"], input[type="color"] { touch-action: manipulation; }
 
 .app {
-  width: min(1320px, calc(100vw - 24px));
+  width: min(1600px, calc(100vw - 24px));
   margin: 0 auto;
   padding: 20px 0 max(18px, env(safe-area-inset-bottom));
 }
@@ -68,7 +68,7 @@ h3 { font-size: 1rem; }
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(320px, 1.12fr) minmax(320px, 0.95fr);
+  grid-template-columns: minmax(360px, 1.45fr) minmax(320px, 0.85fr);
   gap: 18px;
   align-items: start;
 }
@@ -96,7 +96,7 @@ h3 { font-size: 1rem; }
 
 .canvas-wrap {
   margin: 16px 20px 0;
-  padding: 14px;
+  padding: 10px;
   border-radius: 20px;
   background: #07101c;
   border: 1px solid #0b1522;
@@ -115,6 +115,7 @@ canvas {
   height: auto;
   border-radius: 14px;
   background: #000;
+  image-rendering: pixelated;
 }
 
 .stats {
@@ -307,7 +308,7 @@ output {
 .is-hidden { display: none; }
 .top-gap { margin-top: 4px; }
 
-@media (max-width: 1020px) {
+@media (max-width: 1120px) {
   .layout { grid-template-columns: 1fr; }
   .preview-card { order: -1; }
 }
