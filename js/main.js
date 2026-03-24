@@ -5,9 +5,20 @@ import { draw, tick } from './render.js';
 import { renderLayerControls, setStatus, bindColor } from './ui.js';
 import { initDrag } from './drag.js';
 import { saveImage, saveVideo } from './save.js';
+import { t, getLang, setLang, applyI18n } from './i18n.js';
 
 initModals();
 initDrag();
+
+// ── Language toggle ───────────────────────────────────────────
+document.getElementById('langToggle').addEventListener('click', () => {
+  setLang(getLang() === 'ja' ? 'en' : 'ja');
+  applyI18n();
+  renderLayerControls();
+  // Sync JS-controlled dynamic text to new language
+  els.toggle.textContent = state.running ? t('stopPreview') : t('resumePreview');
+  setStatus(state.running ? t('statusPlaying') : t('statusPaused'));
+});
 
 // ── Layer add ─────────────────────────────────────────────────
 els.addLayer.addEventListener('click', () => {
@@ -25,7 +36,7 @@ els.addLayer.addEventListener('click', () => {
     offset:       0
   });
   renderLayerControls();
-  setStatus('文字を追加しました');
+  setStatus(t('statusLayerAdded'));
 });
 
 // ── Global settings ───────────────────────────────────────────
@@ -33,7 +44,7 @@ els.addLayer.addEventListener('click', () => {
   node.addEventListener('input', () => {
     syncCanvas(toConfig());
     resetAllScrollingLayers();
-    setStatus('全体設定を更新しました');
+    setStatus(t('statusGlobalUpdated'));
   });
 });
 
@@ -42,25 +53,26 @@ bindColor(els.bgColor, els.bgHex, '#050505');
 // ── Control modal ─────────────────────────────────────────────
 els.toggle.addEventListener('click', () => {
   state.running = !state.running;
-  els.toggle.textContent = state.running ? 'プレビュー停止' : 'プレビュー再開';
-  setStatus(state.running ? 'プレビュー再生中' : 'プレビュー停止中');
+  els.toggle.textContent = state.running ? t('stopPreview') : t('resumePreview');
+  setStatus(state.running ? t('statusPlaying') : t('statusPaused'));
 });
 
 els.reset.addEventListener('click', () => {
   resetOffsets();
   draw();
-  setStatus('スクロール位置をリセットしました');
+  setStatus(t('statusScrollReset'));
 });
 
 // ── Save modal ────────────────────────────────────────────────
-els.savePng.addEventListener('click',  () => saveImage('png').catch((e)  => { alert(e.message); setStatus('保存に失敗しました'); }));
-els.saveWebp.addEventListener('click', () => saveImage('webp').catch((e) => { alert(e.message); setStatus('保存に失敗しました'); }));
+els.savePng.addEventListener('click',  () => saveImage('png').catch((e)  => { alert(e.message); setStatus(t('saveFailed')); }));
+els.saveWebp.addEventListener('click', () => saveImage('webp').catch((e) => { alert(e.message); setStatus(t('saveFailed')); }));
 els.saveWebm.addEventListener('click', () => saveVideo(false));
 els.saveMp4.addEventListener('click',  () => saveVideo(true));
 
 // ── Init ──────────────────────────────────────────────────────
+applyI18n();
 renderLayerControls();
 syncCanvas(toConfig());
 draw();
-setStatus('プレビュー再生中');
+setStatus(t('statusPlaying'));
 requestAnimationFrame(tick);

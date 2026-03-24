@@ -20,12 +20,13 @@ A browser-based LED signboard simulator. Design animated text displays with scro
   - Animations: WebM, MP4 (MP4 uses [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm) via CDN)
 - **Auto-calculated recording duration** — computed from scroll distances, speeds, and blink intervals to capture one complete loop
 - **Responsive layout** — works on desktop, tablet, and mobile
+- **Japanese / English UI** — toggle language in the header; preference saved to `localStorage`
 
 ## Usage
 
 1. Open `index.html` in a modern browser (no build step required).
-2. Click **全体設定** (Global Settings) to set canvas size, background color, LED dot size, and gap.
-3. Click **文字を追加** (Add Text) to create a text layer.
+2. Click **Settings** (全体設定) to set canvas size, background color, LED dot size, and gap.
+3. Click **Add Text** (文字を追加) to create a text layer.
 4. Configure each layer's text, color, font, position, scroll, and blink settings.
 5. Drag text on the preview to fine-tune positioning.
 6. Use **PNG / WebP** to save a static image, or **WebM / MP4** to record an animation.

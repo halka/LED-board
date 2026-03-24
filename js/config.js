@@ -1,4 +1,5 @@
 import { positive, finite, safeHex } from './utils.js';
+import { t } from './i18n.js';
 import { els } from './dom.js';
 import { state } from './state.js';
 import { normalizeLayer, getScrollStartOffset, getScrollDuration } from './layers.js';
@@ -52,7 +53,7 @@ export function restoreAnimationState(snapshot) {
     const layer = state.layers.find((item) => item.id === saved.id);
     if (layer) layer.offset = saved.offset;
   }
-  els.toggle.textContent = state.running ? 'プレビュー停止' : 'プレビュー再開';
+  els.toggle.textContent = state.running ? t('stopPreview') : t('resumePreview');
 }
 
 export function prepareRecordingAnimation(config) {

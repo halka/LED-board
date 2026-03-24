@@ -1,4 +1,5 @@
 import { buildDownloadName } from './utils.js';
+import { t } from './i18n.js';
 import { els } from './dom.js';
 import { state } from './state.js';
 import { toConfig, snapshotAnimationState, restoreAnimationState, prepareRecordingAnimation } from './config.js';
@@ -16,13 +17,13 @@ export function download(blob, name, mimeType) {
 }
 
 export async function saveImage(type) {
-  setStatus(`${type.toUpperCase()} を生成中...`);
+  setStatus(t('generating', { 0: type.toUpperCase() }));
   draw();
   const mime = type === 'png' ? 'image/png' : 'image/webp';
   const blob = await new Promise((resolve) => els.screen.toBlob(resolve, mime, 0.95));
-  if (!blob) throw new Error(`${type.toUpperCase()} の生成に失敗しました。`);
+  if (!blob) throw new Error(t('generateFailed', { 0: type.toUpperCase() }));
   download(blob, buildDownloadName(type), mime);
-  setStatus(`${type.toUpperCase()} を保存しました`);
+  setStatus(t('saved', { 0: type.toUpperCase() }));
 }
 
 // MP4 は Safari など対応ブラウザで直接録画。非対応時は WebM にフォールバック。
@@ -38,12 +39,12 @@ export function detectVideoMime(preferMp4) {
 }
 
 export async function recordVideoBlob(seconds, fps, preferMp4 = false) {
-  if (!window.MediaRecorder) throw new Error('このブラウザは MediaRecorder に対応していません。');
+  if (!window.MediaRecorder) throw new Error(t('noMediaRecorder'));
   const detected = detectVideoMime(preferMp4);
-  if (!detected) throw new Error('このブラウザは動画録画に対応していません。');
+  if (!detected) throw new Error(t('noVideoRecord'));
 
   const { mime, ext } = detected;
-  if (preferMp4 && ext === 'webm') setStatus('MP4非対応のため WebM で録画します...');
+  if (preferMp4 && ext === 'webm') setStatus(t('mp4Fallback'));
 
   const stream   = els.screen.captureStream(fps);
   const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
@@ -69,7 +70,7 @@ export async function recordVideoBlob(seconds, fps, preferMp4 = false) {
       cancelAnimationFrame(rafId);
       stream.getTracks().forEach((t) => t.stop());
       hideRecordProgress();
-      reject(e.error || new Error('録画に失敗しました。'));
+      reject(e.error || new Error(t('recordFailed')));
     };
     recorder.onstop = () => {
       cancelAnimationFrame(rafId);
@@ -100,15 +101,15 @@ export async function saveVideo(preferMp4 = false) {
     prepareRecordingAnimation(config);
     draw();
     const label = preferMp4 ? 'MP4' : 'WebM';
-    setStatus(`${label} 用に ${config.duration} 秒録画中...`);
+    setStatus(t('recordingFor', { 0: label, 1: config.duration }));
     const { blob, ext } = await recordVideoBlob(config.duration, config.fps, preferMp4);
     download(blob, buildDownloadName(ext), blob.type);
-    setStatus(`${ext.toUpperCase()} を保存しました`);
+    setStatus(t('saved', { 0: ext.toUpperCase() }));
   } catch (error) {
     console.error(error);
     hideRecordProgress();
-    setStatus('保存に失敗しました');
-    alert(error.message || '保存に失敗しました。');
+    setStatus(t('saveFailed'));
+    alert(error.message || t('saveFailed'));
   } finally {
     restoreAnimationState(snapshot);
     draw();

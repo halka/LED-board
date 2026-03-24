@@ -1,4 +1,5 @@
 import { finite } from './utils.js';
+import { t } from './i18n.js';
 import { els } from './dom.js';
 import { state } from './state.js';
 import { hitTestLayer, draw } from './render.js';
@@ -24,7 +25,7 @@ export function initDrag() {
     };
     els.screen.classList.add('dragging');
     els.screen.setPointerCapture(event.pointerId);
-    setStatus('文字をドラッグ中');
+    setStatus(t('statusDragging'));
   });
 
   els.screen.addEventListener('pointermove', (event) => {
@@ -42,7 +43,7 @@ export function initDrag() {
     state.drag = null;
     els.screen.classList.remove('dragging');
     renderLayerControls();
-    setStatus('文字位置を更新しました');
+    setStatus(t('statusPositionUpdated'));
   }
   els.screen.addEventListener('pointerup',     finishDrag);
   els.screen.addEventListener('pointercancel', finishDrag);

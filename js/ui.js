@@ -4,6 +4,7 @@ import { state } from './state.js';
 import { normalizeLayer } from './layers.js';
 import { toConfig, resetLayerScrollOffset } from './config.js';
 import { draw } from './render.js';
+import { t } from './i18n.js';
 
 // パラメタが変化したらスクロール中レイヤーのプレビュー位置をリセット
 const SCROLL_RESET_KEYS = new Set([
@@ -15,7 +16,7 @@ export function setStatus(text) { els.status.textContent = text; }
 
 export function setRecordProgress(value) {
   const clamped = Math.max(0, Math.min(1, value));
-  if (els.recordProgress)     els.recordProgress.value         = clamped;
+  if (els.recordProgress)     els.recordProgress.value          = clamped;
   if (els.recordProgressText) els.recordProgressText.textContent = `${Math.round(clamped * 100)}%`;
 }
 export function showRecordProgress() {
@@ -42,13 +43,13 @@ export function updateLayer(id, key, rawValue, inputType = 'text') {
     layer[key] = rawValue;
   }
 
-  const normalized   = normalizeLayer(layer);
-  const shouldReset  =
+  const normalized  = normalizeLayer(layer);
+  const shouldReset =
     (key === 'scroll' && normalized.scroll) ||
     (SCROLL_RESET_KEYS.has(key) && normalized.scroll);
   if (shouldReset) resetLayerScrollOffset(layer);
 
-  setStatus('設定を更新しました');
+  setStatus(t('statusLayerUpdated'));
 }
 
 // ── Layer order ───────────────────────────────────────────────
@@ -151,7 +152,7 @@ export function bindLayerControlEvents() {
       });
     });
   }
-  bindHexPair('.layer-color',        '.layer-hex',         'color');
+  bindHexPair('.layer-color',         '.layer-hex',         'color');
   bindHexPair('.layer-outline-color', '.layer-outline-hex', 'outlineColor');
 
   els.layers.querySelectorAll('.remove-layer').forEach((node) => {
@@ -159,21 +160,21 @@ export function bindLayerControlEvents() {
       const id = Number(e.target.dataset.id);
       state.layers = state.layers.filter((layer) => layer.id !== id);
       renderLayerControls();
-      setStatus('文字を削除しました');
+      setStatus(t('statusLayerDeleted'));
     });
   });
 
   const moveHandlers = {
-    '.layer-bring-front': ['front',    '文字を最前面に移動しました'],
-    '.layer-send-back':   ['back',     '文字を最背面に移動しました'],
-    '.layer-forward':     ['forward',  '文字を一つ前へ移動しました'],
-    '.layer-backward':    ['backward', '文字を一つ後ろへ移動しました']
+    '.layer-bring-front': ['front',    'statusMovedFront'],
+    '.layer-send-back':   ['back',     'statusMovedBack'],
+    '.layer-forward':     ['forward',  'statusMovedForward'],
+    '.layer-backward':    ['backward', 'statusMovedBackward']
   };
-  Object.entries(moveHandlers).forEach(([sel, [mode, msg]]) => {
+  Object.entries(moveHandlers).forEach(([sel, [mode, statusKey]]) => {
     els.layers.querySelectorAll(sel).forEach((node) => {
       node.addEventListener('click', (e) => {
         moveLayer(Number(e.target.dataset.id), mode);
-        setStatus(msg);
+        setStatus(t(statusKey));
       });
     });
   });
@@ -185,7 +186,7 @@ export function bindLayerControlEvents() {
       if (!layer) return;
       state.layers.push({ ...structuredClone(layer), id: state.nextLayerId++, y: finite(layer.y, 0) + 60 });
       renderLayerControls();
-      setStatus('文字を複製しました');
+      setStatus(t('statusLayerDuplicated'));
     });
   });
 }
@@ -199,67 +200,67 @@ export function renderLayerControls() {
     wrap.className = 'layer-card';
     wrap.innerHTML = `
       <div class="layer-head">
-        <div class="layer-title">文字 ${index + 1} <span class="muted">表示順 ${index + 1}/${state.layers.length}</span></div>
+        <div class="layer-title">${t('layerTitle', { 0: index + 1 })} <span class="muted">${t('layerOrder', { 0: index + 1, 1: state.layers.length })}</span></div>
         <div class="actions-inline">
-          <button class="btn btn-sub btn-small layer-send-back"   type="button" data-id="${item.id}" ${index === 0 ? 'disabled' : ''}>最背面</button>
-          <button class="btn btn-sub btn-small layer-backward"    type="button" data-id="${item.id}" ${index === 0 ? 'disabled' : ''}>後ろへ</button>
-          <button class="btn btn-sub btn-small layer-forward"     type="button" data-id="${item.id}" ${index === state.layers.length - 1 ? 'disabled' : ''}>前へ</button>
-          <button class="btn btn-sub btn-small layer-bring-front" type="button" data-id="${item.id}" ${index === state.layers.length - 1 ? 'disabled' : ''}>最前面</button>
-          <button class="btn btn-sub btn-small duplicate-layer"   type="button" data-id="${item.id}">複製</button>
-          <button class="btn btn-sub btn-small remove-layer"      type="button" data-id="${item.id}" ${state.layers.length === 1 ? 'disabled' : ''}>削除</button>
+          <button class="btn btn-sub btn-small layer-send-back"   type="button" data-id="${item.id}" ${index === 0 ? 'disabled' : ''}>${t('toBack')}</button>
+          <button class="btn btn-sub btn-small layer-backward"    type="button" data-id="${item.id}" ${index === 0 ? 'disabled' : ''}>${t('backward')}</button>
+          <button class="btn btn-sub btn-small layer-forward"     type="button" data-id="${item.id}" ${index === state.layers.length - 1 ? 'disabled' : ''}>${t('forward')}</button>
+          <button class="btn btn-sub btn-small layer-bring-front" type="button" data-id="${item.id}" ${index === state.layers.length - 1 ? 'disabled' : ''}>${t('toFront')}</button>
+          <button class="btn btn-sub btn-small duplicate-layer"   type="button" data-id="${item.id}">${t('duplicate')}</button>
+          <button class="btn btn-sub btn-small remove-layer"      type="button" data-id="${item.id}" ${state.layers.length === 1 ? 'disabled' : ''}>${t('delete')}</button>
         </div>
       </div>
 
       <label class="field">
-        <span>テキスト</span>
+        <span>${t('textField')}</span>
         <textarea class="layer-input" data-id="${item.id}" data-key="text" rows="3">${escapeHtml(item.text)}</textarea>
       </label>
 
       <div class="grid four">
         <label class="field">
-          <span>文字色</span>
+          <span>${t('textColor')}</span>
           <div class="color-row">
             <input class="layer-color" data-id="${item.id}" data-key="color" type="color" value="${item.color}">
             <input class="layer-hex"   data-id="${item.id}" data-key="color" type="text"  value="${item.color}">
           </div>
         </label>
         <label class="field">
-          <span>文字サイズ(px)</span>
+          <span>${t('fontSize')}</span>
           <input class="layer-number" data-id="${item.id}" data-key="fontPx" type="number" value="${item.fontPx}" step="1">
         </label>
         <label class="field">
-          <span>ウェイト</span>
+          <span>${t('fontWeight')}</span>
           <input class="layer-number" data-id="${item.id}" data-key="fontWeight" type="number" value="${item.fontWeight}" step="100">
         </label>
         <label class="field">
-          <span>フォント</span>
+          <span>${t('font')}</span>
           <select class="layer-select" data-id="${item.id}" data-key="fontFamily">
-            <optgroup label="ゴシック体（システム）">
+            <optgroup label="${t('gothicSystem')}">
               <option value="biz"  ${item.fontFamily === 'biz'  ? 'selected' : ''}>BIZ UDPゴシック</option>
               <option value="hira" ${item.fontFamily === 'hira' ? 'selected' : ''}>ヒラギノ角ゴ (macOS/iOS)</option>
               <option value="yu"   ${item.fontFamily === 'yu'   ? 'selected' : ''}>游ゴシック (Win/Mac)</option>
               <option value="me"   ${item.fontFamily === 'me'   ? 'selected' : ''}>メイリオ (Windows)</option>
               <option value="noto" ${item.fontFamily === 'noto' ? 'selected' : ''}>Noto Sans JP</option>
-              <option value="sans" ${item.fontFamily === 'sans' ? 'selected' : ''}>Sans-serif（汎用）</option>
+              <option value="sans" ${item.fontFamily === 'sans' ? 'selected' : ''}>Sans-serif</option>
             </optgroup>
-            <optgroup label="明朝体（システム）">
+            <optgroup label="${t('minchoSystem')}">
               <option value="hiraMin" ${item.fontFamily === 'hiraMin' ? 'selected' : ''}>ヒラギノ明朝 (macOS/iOS)</option>
               <option value="yumin"   ${item.fontFamily === 'yumin'   ? 'selected' : ''}>游明朝 (Win/Mac)</option>
               <option value="notoser" ${item.fontFamily === 'notoser' ? 'selected' : ''}>Noto Serif JP</option>
-              <option value="serif"   ${item.fontFamily === 'serif'   ? 'selected' : ''}>Serif（汎用）</option>
+              <option value="serif"   ${item.fontFamily === 'serif'   ? 'selected' : ''}>Serif</option>
             </optgroup>
-            <optgroup label="端末フォント（任意選択）">
-              <option value="custom" ${item.fontFamily === 'custom' ? 'selected' : ''}>端末フォントを指定…</option>
+            <optgroup label="${t('deviceFont')}">
+              <option value="custom" ${item.fontFamily === 'custom' ? 'selected' : ''}>${t('deviceFontOption')}</option>
             </optgroup>
           </select>
         </label>
 
         <div class="custom-font-row" data-id="${item.id}" ${item.fontFamily === 'custom' ? '' : 'hidden'} style="grid-column:1/-1">
           <label class="field">
-            <span>フォント名（端末にインストール済みのもの）</span>
+            <span>${t('customFontLabel')}</span>
             <input class="layer-custom-font" data-id="${item.id}" type="text"
               list="local-fonts-list-${item.id}"
-              placeholder="例: Helvetica Neue、游明朝"
+              placeholder="${t('customFontPlaceholder')}"
               value="${escapeHtml(item.customFont || '')}">
             <datalist id="local-fonts-list-${item.id}"></datalist>
           </label>
@@ -268,68 +269,68 @@ export function renderLayerControls() {
 
       <div class="grid three">
         <label class="field">
-          <span>X座標(px)</span>
+          <span>${t('xPos')}</span>
           <input class="layer-number" data-id="${item.id}" data-key="x" type="number" value="${item.x}" step="1">
         </label>
         <label class="field">
-          <span>Y座標(px)</span>
+          <span>${t('yPos')}</span>
           <input class="layer-number" data-id="${item.id}" data-key="y" type="number" value="${item.y}" step="1">
         </label>
         <label class="field">
-          <span>揃え</span>
+          <span>${t('align')}</span>
           <select class="layer-select" data-id="${item.id}" data-key="align">
-            <option value="left"   ${item.align === 'left'   ? 'selected' : ''}>左</option>
-            <option value="center" ${item.align === 'center' ? 'selected' : ''}>中央</option>
-            <option value="right"  ${item.align === 'right'  ? 'selected' : ''}>右</option>
+            <option value="left"   ${item.align === 'left'   ? 'selected' : ''}>${t('alignLeft')}</option>
+            <option value="center" ${item.align === 'center' ? 'selected' : ''}>${t('alignCenter')}</option>
+            <option value="right"  ${item.align === 'right'  ? 'selected' : ''}>${t('alignRight')}</option>
           </select>
         </label>
       </div>
 
       <div class="check-list">
         <label class="field">
-          <span>横スクロール</span>
+          <span>${t('scroll')}</span>
           <label class="switch-row">
             <input class="layer-check" data-id="${item.id}" data-key="scroll" type="checkbox" ${item.scroll ? 'checked' : ''}>
-            <span>有効</span>
+            <span>${t('enabled')}</span>
           </label>
         </label>
         <label class="field">
-          <span>点滅</span>
+          <span>${t('blink')}</span>
           <label class="switch-row">
             <input class="layer-check" data-id="${item.id}" data-key="blink" type="checkbox" ${item.blink ? 'checked' : ''}>
-            <span>有効</span>
+            <span>${t('enabled')}</span>
           </label>
         </label>
       </div>
 
       <div class="grid two">
         <label class="field">
-          <span>スクロール速度(px/s)</span>
+          <span>${t('scrollSpeed')}</span>
           <input class="layer-number" data-id="${item.id}" data-key="speed" type="number" value="${item.speed}" step="1">
         </label>
         <label class="field">
-          <span>点滅間隔(ms)</span>
+          <span>${t('blinkMs')}</span>
           <input class="layer-number" data-id="${item.id}" data-key="blinkMs" type="number" value="${item.blinkMs}" step="1">
         </label>
       </div>
 
       <div class="check-list">
         <label class="field">
-          <span>縁取り</span>
+          <span>${t('outline')}</span>
           <label class="switch-row">
             <input class="layer-check" data-id="${item.id}" data-key="outline" type="checkbox" ${item.outline ? 'checked' : ''}>
-            <span>有効</span>
+            <span>${t('enabled')}</span>
           </label>
         </label>
         <label class="field">
-          <span>縁取り太さ(px)</span>
+          <span>${t('outlineWidth')}</span>
           <input class="layer-number" data-id="${item.id}" data-key="outlineWidth" type="number" value="${item.outlineWidth}" step="1">
         </label>
       </div>
 
       <div class="grid two">
         <label class="field">
-          <span>縁取り色</span>
+          <span>${t('outlineColor')}</span>
           <div class="color-row">
             <input class="layer-outline-color" data-id="${item.id}" data-key="outlineColor" type="color" value="${item.outlineColor}">
             <input class="layer-outline-hex"   data-id="${item.id}" data-key="outlineColor" type="text"  value="${item.outlineColor}">
@@ -352,13 +353,13 @@ export function bindColor(colorEl, hexEl, fallback) {
   colorEl.addEventListener('input', () => {
     const value = safeHex(colorEl.value.trim(), fallback);
     hexEl.value = value;
-    setStatus('色設定を更新しました');
+    setStatus(t('statusColorUpdated'));
   });
   hexEl.addEventListener('input', () => {
     const value = hexEl.value.trim();
     if (/^#[0-9a-f]{6}$/i.test(value)) {
       colorEl.value = value;
-      setStatus('色設定を更新しました');
+      setStatus(t('statusColorUpdated'));
     }
   });
   hexEl.addEventListener('blur', () => {

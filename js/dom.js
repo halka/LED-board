@@ -1,4 +1,5 @@
 import { state } from './state.js';
+import { t } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -55,7 +56,7 @@ export function syncCanvas(config) {
   els.meta.textContent       = `${config.width} × ${config.height} px`;
   els.dotStat.textContent    = `${config.dotSize} px / gap ${config.gap} px`;
   els.recordStat.textContent = `${config.duration} 秒 / ${config.fps} fps`;
-  if (els.duration) els.duration.value = `${config.duration} 秒`;
+  if (els.duration) els.duration.value = t('durationSec', { 0: config.duration });
   els.layerStat.textContent  = String(state.layers.length);
 }
 

@@ -23,6 +23,7 @@
       <p class="eyebrow">LED Signboard</p>
       <h1>LED Signboard</h1>
       <p class="lead">ﾔｯﾊﾟｼﾝｶﾝｾﾝﾀﾞｯﾀﾝｼﾞｬﾅｲｽｶﾈｰ</p>
+      <button id="langToggle" class="btn btn-sub btn-small" type="button">EN</button>
     </header>
 
     <main class="layout">
@@ -31,7 +32,7 @@
       <section class="card preview-card">
         <div class="head">
           <div>
-            <h2>プレビュー</h2>
+            <h2 data-i18n="preview">プレビュー</h2>
             <p id="meta" class="muted">---</p>
           </div>
           <p id="status" class="status">プレビュー再生中</p>
@@ -40,9 +41,9 @@
           <canvas id="screen" width="1280" height="320"></canvas>
         </div>
         <div class="stats">
-          <div><span>テキスト数</span><strong id="layerStat">0</strong></div>
+          <div><span data-i18n="textCount">テキスト数</span><strong id="layerStat">0</strong></div>
           <div><span>LED</span><strong id="dotStat">---</strong></div>
-          <div><span>録画</span><strong id="recordStat">---</strong></div>
+          <div><span data-i18n="recording">録画</span><strong id="recordStat">---</strong></div>
         </div>
       </section>
 
@@ -50,15 +51,15 @@
       <div class="action-row">
         <button id="openControl" class="btn btn-control" type="button">
           <span class="action-icon">⏯</span>
-          <span>プレビュー制御</span>
+          <span data-i18n="controlModal">プレビュー制御</span>
         </button>
         <button id="openSettings" class="btn btn-sub" type="button">
           <span class="action-icon">⚙</span>
-          <span>設定</span>
+          <span data-i18n="settings">設定</span>
         </button>
         <button id="openSave" class="btn btn-accent" type="button">
           <span class="action-icon">💾</span>
-          <span>保存</span>
+          <span data-i18n="save">保存</span>
         </button>
       </div>
 
@@ -66,10 +67,10 @@
       <section class="card layers-card">
         <div class="head">
           <div>
-            <h2>文字レイヤー</h2>
-            <p class="muted">数字は自由入力。プレビュー上でドラッグして位置調整できます。</p>
+            <h2 data-i18n="textLayers">文字レイヤー</h2>
+            <p class="muted" data-i18n="textLayersHint">数字は自由入力。プレビュー上でドラッグして位置調整できます。</p>
           </div>
-          <button id="addLayer" class="btn btn-sub btn-small" type="button">文字を追加</button>
+          <button id="addLayer" class="btn btn-sub btn-small" type="button" data-i18n="addText">文字を追加</button>
         </div>
         <div class="form">
           <div id="layers"></div>
@@ -83,13 +84,13 @@
   <dialog id="controlModal" class="modal">
     <div class="modal-inner">
       <div class="modal-head">
-        <h2>プレビュー制御</h2>
-        <button class="modal-close" data-modal="controlModal" type="button" aria-label="閉じる">✕</button>
+        <h2 data-i18n="controlModal">プレビュー制御</h2>
+        <button class="modal-close" data-modal="controlModal" type="button" data-i18n-label="close" aria-label="閉じる">✕</button>
       </div>
       <div class="modal-body">
         <div class="btn-grid two">
-          <button id="toggle" class="btn" type="button">プレビュー停止</button>
-          <button id="reset" class="btn btn-sub" type="button">スクロール位置リセット</button>
+          <button id="toggle" class="btn" type="button" data-i18n="stopPreview">プレビュー停止</button>
+          <button id="reset" class="btn btn-sub" type="button" data-i18n="resetScroll">スクロール位置リセット</button>
         </div>
       </div>
     </div>
@@ -99,26 +100,26 @@
   <dialog id="settingsModal" class="modal">
     <div class="modal-inner">
       <div class="modal-head">
-        <h2>全体設定</h2>
-        <button class="modal-close" data-modal="settingsModal" type="button" aria-label="閉じる">✕</button>
+        <h2 data-i18n="globalSettings">全体設定</h2>
+        <button class="modal-close" data-modal="settingsModal" type="button" data-i18n-label="close" aria-label="閉じる">✕</button>
       </div>
       <div class="modal-body">
         <div class="section-block">
           <div class="section-title-row">
-            <h3>キャンバス・LED</h3>
-            <span class="section-tip">サイズとLEDの大きさ</span>
+            <h3 data-i18n="canvasLED">キャンバス・LED</h3>
+            <span class="section-tip" data-i18n="canvasLEDHint">サイズとLEDの大きさ</span>
           </div>
           <div class="grid three">
             <label class="field">
-              <span>幅</span>
+              <span data-i18n="width">幅</span>
               <input id="width" type="number" value="1280" step="1">
             </label>
             <label class="field">
-              <span>高さ</span>
+              <span data-i18n="height">高さ</span>
               <input id="height" type="number" value="320" step="1">
             </label>
             <label class="field">
-              <span>背景色</span>
+              <span data-i18n="bgColor">背景色</span>
               <div class="color-row">
                 <input id="bgColor" type="color" value="#050505">
                 <input id="bgHex" type="text" value="#050505">
@@ -127,19 +128,19 @@
           </div>
           <div class="grid four">
             <label class="field">
-              <span>LEDサイズ</span>
+              <span data-i18n="ledSize">LEDサイズ</span>
               <input id="dotSize" type="number" value="2" step="1">
             </label>
             <label class="field">
-              <span>LED間隔</span>
+              <span data-i18n="ledGap">LED間隔</span>
               <input id="gap" type="number" value="1" step="1">
             </label>
             <label class="field">
-              <span>録画FPS</span>
+              <span data-i18n="recordFps">録画FPS</span>
               <input id="fps" type="number" value="60" step="1">
             </label>
             <label class="field">
-              <span>録画秒数(自動)</span>
+              <span data-i18n="recordDuration">録画秒数(自動)</span>
               <input id="duration" type="text" value="自動計算" readonly>
             </label>
           </div>
@@ -152,32 +153,32 @@
   <dialog id="saveModal" class="modal">
     <div class="modal-inner">
       <div class="modal-head">
-        <h2>保存</h2>
-        <button class="modal-close" data-modal="saveModal" type="button" aria-label="閉じる">✕</button>
+        <h2 data-i18n="saveModal">保存</h2>
+        <button class="modal-close" data-modal="saveModal" type="button" data-i18n-label="close" aria-label="閉じる">✕</button>
       </div>
       <div class="modal-body">
         <div>
-          <p class="muted label">画像保存</p>
+          <p class="muted label" data-i18n="saveImage">画像保存</p>
           <div class="btn-grid two">
-            <button id="savePng" class="btn btn-sub" type="button">PNG 保存</button>
-            <button id="saveWebp" class="btn btn-sub" type="button">WebP 保存</button>
+            <button id="savePng" class="btn btn-sub" type="button" data-i18n="savePng">PNG 保存</button>
+            <button id="saveWebp" class="btn btn-sub" type="button" data-i18n="saveWebp">WebP 保存</button>
           </div>
         </div>
         <div>
-          <p class="muted label">動画保存</p>
+          <p class="muted label" data-i18n="saveVideo">動画保存</p>
           <div class="btn-grid two">
-            <button id="saveWebm" class="btn btn-accent" type="button">WebM 保存</button>
-            <button id="saveMp4" class="btn btn-accent" type="button">MP4 保存</button>
+            <button id="saveWebm" class="btn btn-accent" type="button" data-i18n="saveWebm">WebM 保存</button>
+            <button id="saveMp4" class="btn btn-accent" type="button" data-i18n="saveMp4">MP4 保存</button>
           </div>
         </div>
         <div class="record-progress-wrap" id="recordProgressWrap" hidden>
           <div class="record-progress-head">
-            <span class="muted">録画進捗</span>
+            <span class="muted" data-i18n="recordProgress">録画進捗</span>
             <strong id="recordProgressText">0%</strong>
           </div>
           <progress id="recordProgress" max="1" value="0"></progress>
         </div>
-        <p class="muted note">録画中は開始から終了まで自動で進みます。MP4非対応ブラウザはWebMで保存されます。</p>
+        <p class="muted note" data-i18n="recordNote">録画中は開始から終了まで自動で進みます。MP4非対応ブラウザはWebMで保存されます。</p>
       </div>
     </div>
   </dialog>
