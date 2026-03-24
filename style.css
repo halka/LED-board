@@ -15,7 +15,7 @@
   --radius-inner: 16px;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; }
+html, body { margin: 0; min-height: 100%; overscroll-behavior-y: none; }
 body {
   font-family: "BIZ UDPGothic","BIZ UDPゴシック","Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif;
   color: var(--text);
