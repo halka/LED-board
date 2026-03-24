@@ -3,137 +3,174 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>LED電光掲示板</title>
-  <meta name="description" content="ブラウザで動作するLED電光掲示板。文字色・位置・サイズ・フォント・縁取りを自由に設定でき、PNG/WebP/WebMで保存できます。">
+  <title>LED Signboard</title>
+  <meta name="description" content="ブラウザで動作するLED電光掲示板。PNG/WebP/WebM/MP4で保存できます。">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <div class="app">
     <header class="hero">
-      <p class="eyebrow">Browser LED Signboard</p>
-      <h1>LED電光掲示板</h1>
-      <p class="lead">
-        制限なしの自由配置モードです。文字ごとに色・位置・サイズ・フォント・縁取り・点滅・スクロールを設定でき、文字はLEDドット化しつつ、指定色をそのまま使って描画します。
-        プレビュー上で文字をドラッグして位置を動かせるほか、レイヤーの前後順も変更できます。
-      </p>
+      <p class="eyebrow">LED Signboard</p>
+      <h1>LED Signboard</h1>
+      <p class="lead">ﾔｯﾊﾟｼﾝｶﾝｾﾝﾀﾞｯﾀﾝｼﾞｬﾅｲｽｶﾈｰ</p>
     </header>
 
     <main class="layout">
+
+      <!-- 1. プレビュー（固定） -->
       <section class="card preview-card">
         <div class="head">
           <div>
             <h2>プレビュー</h2>
-            <p id="meta" class="muted">1280 × 320 px</p>
+            <p id="meta" class="muted">---</p>
           </div>
           <p id="status" class="status">プレビュー再生中</p>
         </div>
-
         <div class="canvas-wrap">
           <canvas id="screen" width="1280" height="320"></canvas>
         </div>
-
         <div class="stats">
           <div><span>テキスト数</span><strong id="layerStat">0</strong></div>
-          <div><span>LED</span><strong id="dotStat">10 px / gap 2 px</strong></div>
-          <div><span>録画</span><strong id="recordStat">5 秒 / 30 fps</strong></div>
-        </div>
-
-        <div class="export sticky-mobile">
-          <div>
-            <p class="muted label">画像保存</p>
-            <div class="btn-grid two">
-              <button id="savePng" class="btn btn-sub" type="button">PNG保存</button>
-              <button id="saveWebp" class="btn btn-sub" type="button">WebP保存</button>
-            </div>
-          </div>
-          <div>
-            <p class="muted label">動画保存</p>
-            <div class="btn-grid one">
-              <button id="saveWebm" class="btn btn-accent" type="button">WebM保存</button>
-            </div>
-          </div>
-          <div class="record-progress-wrap" id="recordProgressWrap" hidden>
-            <div class="record-progress-head">
-              <span class="muted">録画進捗</span>
-              <strong id="recordProgressText">0%</strong>
-            </div>
-            <progress id="recordProgress" max="1" value="0"></progress>
-          </div>
-          <p class="muted note">動画保存は WebM のみです。録画中は開始から終了まで自動で進みます。</p>
+          <div><span>LED</span><strong id="dotStat">---</strong></div>
+          <div><span>録画</span><strong id="recordStat">---</strong></div>
         </div>
       </section>
 
-      <section class="card control-card">
+      <!-- 2. アクションボタン行 -->
+      <div class="action-row">
+        <button id="openControl" class="btn btn-control" type="button">
+          <span class="action-icon">⏯</span>
+          <span>プレビュー制御</span>
+        </button>
+        <button id="openSettings" class="btn btn-sub" type="button">
+          <span class="action-icon">⚙</span>
+          <span>設定</span>
+        </button>
+        <button id="openSave" class="btn btn-accent" type="button">
+          <span class="action-icon">💾</span>
+          <span>保存</span>
+        </button>
+      </div>
+
+      <!-- 3. 文字レイヤー（固定） -->
+      <section class="card layers-card">
         <div class="head">
           <div>
-            <h2>設定</h2>
-            <p class="muted">数字は自由入力です。プレビュー上で文字をドラッグできます。</p>
+            <h2>文字レイヤー</h2>
+            <p class="muted">数字は自由入力。プレビュー上でドラッグして位置調整できます。</p>
           </div>
+          <button id="addLayer" class="btn btn-sub btn-small" type="button">文字を追加</button>
         </div>
-
         <div class="form">
-          <div class="section-block">
-            <div class="section-title-row">
-              <h3>全体設定</h3>
-              <span class="section-tip">キャンバス全体のサイズとLED密度を決めます。</span>
-            </div>
-
-            <div class="grid three">
-              <label class="field">
-                <span>幅</span>
-                <input id="width" type="number" value="1280" step="1">
-              </label>
-              <label class="field">
-                <span>高さ</span>
-                <input id="height" type="number" value="320" step="1">
-              </label>
-              <label class="field">
-                <span>背景色</span>
-                <div class="color-row">
-                  <input id="bgColor" type="color" value="#050505">
-                  <input id="bgHex" type="text" value="#050505">
-                </div>
-              </label>
-            </div>
-
-            <div class="grid four">
-              <label class="field">
-                <span>LEDサイズ</span>
-                <input id="dotSize" type="number" value="10" step="1">
-              </label>
-              <label class="field">
-                <span>LED間隔</span>
-                <input id="gap" type="number" value="2" step="1">
-              </label>
-              <label class="field">
-                <span>録画FPS</span>
-                <input id="fps" type="number" value="30" step="1">
-              </label>
-              <label class="field">
-                <span>録画秒数(自動)</span>
-                <input id="duration" type="text" value="自動計算" readonly>
-              </label>
-            </div>
-          </div>
-
-          <div class="section-block">
-            <div class="section-title-row">
-              <h3>文字レイヤー</h3>
-              <div class="actions-inline">
-                <button id="addLayer" class="btn btn-sub btn-small" type="button">文字を追加</button>
-              </div>
-            </div>
-            <div id="layers"></div>
-          </div>
-
-          <div class="btn-grid two top-gap">
-            <button id="toggle" class="btn" type="button">プレビュー停止</button>
-            <button id="reset" class="btn btn-sub" type="button">スクロール位置リセット</button>
-          </div>
+          <div id="layers"></div>
         </div>
       </section>
+
     </main>
   </div>
+
+  <!-- モーダル: プレビュー制御 -->
+  <dialog id="controlModal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h2>プレビュー制御</h2>
+        <button class="modal-close" data-modal="controlModal" type="button" aria-label="閉じる">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="btn-grid two">
+          <button id="toggle" class="btn" type="button">プレビュー停止</button>
+          <button id="reset" class="btn btn-sub" type="button">スクロール位置リセット</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- モーダル: 設定 -->
+  <dialog id="settingsModal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h2>全体設定</h2>
+        <button class="modal-close" data-modal="settingsModal" type="button" aria-label="閉じる">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="section-block">
+          <div class="section-title-row">
+            <h3>キャンバス・LED</h3>
+            <span class="section-tip">サイズとLEDの大きさ</span>
+          </div>
+          <div class="grid three">
+            <label class="field">
+              <span>幅</span>
+              <input id="width" type="number" value="1280" step="1">
+            </label>
+            <label class="field">
+              <span>高さ</span>
+              <input id="height" type="number" value="320" step="1">
+            </label>
+            <label class="field">
+              <span>背景色</span>
+              <div class="color-row">
+                <input id="bgColor" type="color" value="#050505">
+                <input id="bgHex" type="text" value="#050505">
+              </div>
+            </label>
+          </div>
+          <div class="grid four">
+            <label class="field">
+              <span>LEDサイズ</span>
+              <input id="dotSize" type="number" value="2" step="1">
+            </label>
+            <label class="field">
+              <span>LED間隔</span>
+              <input id="gap" type="number" value="1" step="1">
+            </label>
+            <label class="field">
+              <span>録画FPS</span>
+              <input id="fps" type="number" value="60" step="1">
+            </label>
+            <label class="field">
+              <span>録画秒数(自動)</span>
+              <input id="duration" type="text" value="自動計算" readonly>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- モーダル: 保存 -->
+  <dialog id="saveModal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <h2>保存</h2>
+        <button class="modal-close" data-modal="saveModal" type="button" aria-label="閉じる">✕</button>
+      </div>
+      <div class="modal-body">
+        <div>
+          <p class="muted label">画像保存</p>
+          <div class="btn-grid two">
+            <button id="savePng" class="btn btn-sub" type="button">PNG 保存</button>
+            <button id="saveWebp" class="btn btn-sub" type="button">WebP 保存</button>
+          </div>
+        </div>
+        <div>
+          <p class="muted label">動画保存</p>
+          <div class="btn-grid two">
+            <button id="saveWebm" class="btn btn-accent" type="button">WebM 保存</button>
+            <button id="saveMp4" class="btn btn-accent" type="button">MP4 保存</button>
+          </div>
+        </div>
+        <div class="record-progress-wrap" id="recordProgressWrap" hidden>
+          <div class="record-progress-head">
+            <span class="muted">録画進捗</span>
+            <strong id="recordProgressText">0%</strong>
+          </div>
+          <progress id="recordProgress" max="1" value="0"></progress>
+        </div>
+        <p class="muted note">録画中は開始から終了まで自動で進みます。MP4非対応ブラウザはWebMで保存されます。</p>
+      </div>
+    </div>
+  </dialog>
 
   <script src="./script.js"></script>
 </body>
