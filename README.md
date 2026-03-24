@@ -1,86 +1,68 @@
-# LED電光掲示板
+# LED Board
 
-ブラウザで動作する LED 電光掲示板です。
+A browser-based LED signboard simulator. Design animated text displays with scrolling, blinking, and layering effects, then export as images or videos.
 
-## 追加した機能
+## Features
 
-- プレビュー上で文字をドラッグして位置変更
-- 文字ごとのフォント選択
-- 文字ごとの縁取り
-  - 縁取りON/OFF
-  - 縁取り色
-  - 縁取り太さ
+- **LED dot preview** — renders the board with a configurable dot grid
+- **Multiple text layers** — add unlimited layers with independent settings
+- **Drag-to-position** — drag text directly on the preview canvas
+- **Per-layer controls**:
+  - Text content, color, font family, font size, font weight, alignment
+  - X / Y position
+  - Horizontal scroll (on/off, speed in px/s)
+  - Blinking (on/off, interval in ms)
+  - Outline (on/off, color, width)
+  - Layer order (bring to front / forward / backward / send to back)
+- **Global settings** — canvas width, height, background color, LED size, LED gap, recording FPS
+- **Export**:
+  - Static images: PNG, WebP
+  - Animations: WebM, MP4 (MP4 uses [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm) via CDN)
+- **Auto-calculated recording duration** — computed from scroll distances, speeds, and blink intervals to capture one complete loop
+- **Responsive layout** — works on desktop, tablet, and mobile
 
-## 既存機能
+## Usage
 
-- 背景色変更
-- 複数文字レイヤー
-- 文字ごとの自由設定
-  - テキスト
-  - 色
-  - X座標 / Y座標
-  - 文字サイズ
-  - 揃え
-  - 横スクロール有無
-  - スクロール速度
-  - 点滅有無
-  - 点滅間隔
-- LEDドット風プレビュー
-- PNG / WebP 画像保存
-- WebM / MP4 動画保存
-- `index.html / style.css / script.js` の分割構成
-- スマホ向けレイアウト
+1. Open `index.html` in a modern browser (no build step required).
+2. Click **全体設定** (Global Settings) to set canvas size, background color, LED dot size, and gap.
+3. Click **文字を追加** (Add Text) to create a text layer.
+4. Configure each layer's text, color, font, position, scroll, and blink settings.
+5. Drag text on the preview to fine-tune positioning.
+6. Use **PNG / WebP** to save a static image, or **WebM / MP4** to record an animation.
 
-## 使い方
+## Export Notes
 
-1. `index.html` をブラウザで開きます。
-2. 幅・高さ・背景色・LEDサイズなどを設定します。
-3. `文字を追加` で文字レイヤーを増やします。
-4. 各文字の色・位置・サイズ・フォント・縁取り・点滅・スクロールを調整します。
-5. プレビュー上で文字をドラッグして配置を調整します。
-6. 必要に応じて PNG / WebP / WebM で保存します。
+- **WebM**: recorded natively via `MediaRecorder`.
+- **MP4**: converted using `ffmpeg.wasm`. The first MP4 export downloads required files from CDN and may take a moment.
+- Recording duration is auto-calculated — no manual input needed.
+- Output filenames follow the pattern `led-board_YYYYMMDDTHHMMSSZ.ext`.
 
-## 補足
+## Deployment
 
-- MP4 変換は `ffmpeg.wasm` を利用します。
-- 初回の MP4 出力時は CDN から関連ファイルを読み込むため少し時間がかかることがあります。
+The project is configured for [Cloudflare Workers](https://workers.cloudflare.com/) via `wrangler.jsonc`.
 
+```bash
+npm install -g wrangler
+wrangler deploy
+```
 
-## 今回追加
+For local development, any static file server works:
 
-- レイヤーの前後順変更
-  - 最前面
-  - 前へ
-  - 後ろへ
-  - 最背面
+```bash
+npx serve .
+```
 
-文字が重なった場合に、どの文字を手前に出すかを文字ごとに変更できます。
+## Browser Requirements
 
+| Feature | Required for |
+|---|---|
+| Canvas 2D API | Rendering |
+| MediaRecorder API | Video recording |
+| `<dialog>` element | Settings modals |
+| CSS Grid / Flexbox | Layout |
 
-## 修正
+Supported browsers: Chrome 90+, Firefox 88+, Safari 14.1+, Edge 90+.
 
-- 縁取りをOFFにしたときでも文字が正しく表示されるよう修正しました。
+## License
 
-- 点灯中のドットは指定色をそのまま表示します。白は純白のまま表示され、透過的な発光演出は加えません。
-
-- 文字はLEDドット化せず、Canvas上に指定色でそのまま描画します。
-- `LEDサイズ` と `LED間隔` は表示描画には使用しません。
-
-- 文字はLEDドットで表示します。
-- 点灯中のドット色は指定色をそのまま使います。
-
-- 録画秒数は手入力ではなく自動計算です。
-- 自動計算は FPS、各スクロール文字の速度(px/s)と1周に必要な距離、各点滅文字の点滅間隔(ms) から決めます。
-- 点滅がある場合は、点滅周期が切れない長さにそろえたうえで、フレーム境界に丸めます。
-
-- 文字のウェイトは固定せず、各レイヤーでユーザが指定できます。
-
-- 文字レイヤーの初期サンプルは入れていません。
-- 動画保存はクリック時に横スクロール文字を開始位置へそろえ、終了位置まで自動録画します。
-- 保存ファイル名は `led-board_YYYYMMDDTHHMMSSZ.ext` 形式です。
-- ダウンロード時のMIME typeは PNG=`image/png`、WebP=`image/webp`、WebM=`video/webm`、MP4=`video/mp4` を使います。
-
-- 動画保存は WebM のみです。
-- WebM 保存時は横スクロール文字を開始位置へそろえてから、終了位置まで自動で録画します。
-- 録画中はプログレスバーで進捗を表示します。
-- MP4 変換処理は削除しました。
+MIT — see [LICENSE](LICENSE).
