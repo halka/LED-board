@@ -980,14 +980,6 @@ els.saveWebp.addEventListener('click', () => saveImage('webp').catch((e) => { al
 els.saveWebm.addEventListener('click', () => saveVideo(false));
 els.saveMp4.addEventListener('click',  () => saveVideo(true));
 
-// ── Prevent pull-to-refresh on mobile/tablet ──────────────────
-document.addEventListener('touchmove', (e) => {
-  if (e.target.closest('.modal')) return;                   // allow scrolling inside modals
-  if (e.target.closest('input, textarea, select')) return; // allow input interactions
-  if (e.touches.length > 1) return;                        // allow pinch-zoom
-  e.preventDefault();
-}, { passive: false });
-
 // ── Init ──────────────────────────────────────────────────────
 renderLayerControls();
 syncCanvas(toConfig());
