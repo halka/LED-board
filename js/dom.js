@@ -55,7 +55,7 @@ export function syncCanvas(config) {
   }
   els.meta.textContent       = `${config.width} × ${config.height} px`;
   els.dotStat.textContent    = `${config.dotSize} px / gap ${config.gap} px`;
-  els.recordStat.textContent = `${config.duration} 秒 / ${config.fps} fps`;
+  els.recordStat.textContent = t('recordStatText', { 0: config.duration, 1: config.fps });
   if (els.duration) els.duration.value = t('durationSec', { 0: config.duration });
   els.layerStat.textContent  = String(state.layers.length);
 }

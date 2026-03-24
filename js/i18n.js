@@ -94,6 +94,7 @@ const LOCALES = {
     outlineWidth:     '縁取り太さ(px)',
     outlineColor:     '縁取り色',
     durationSec:      '{0} 秒',
+    recordStatText:   '{0} 秒 / {1} fps',
   },
 
   en: {
@@ -191,6 +192,7 @@ const LOCALES = {
     outlineWidth:     'Outline Width (px)',
     outlineColor:     'Outline Color',
     durationSec:      '{0} sec',
+    recordStatText:   '{0} sec / {1} fps',
   }
 };
 
