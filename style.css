@@ -236,6 +236,39 @@ input[type="color"] {
   background: #fff;
 }
 .check-list { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+.image-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-inner);
+  background: #fafbfc;
+}
+.layer-image-thumb {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  background:
+    repeating-conic-gradient(#e5e7eb 0% 25%, #f3f4f6 0% 50%) 50% / 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.layer-image-thumb.empty { display: block; }
+.image-layer-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+.image-layer-meta > .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.image-file-label { cursor: pointer; align-self: flex-start; }
 .top-gap { margin-top: 4px; }
 .note, .label { margin: 0; }
 
