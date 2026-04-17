@@ -24,6 +24,7 @@ document.getElementById('langToggle').addEventListener('click', () => {
 els.addLayer.addEventListener('click', () => {
   state.layers.push({
     id:           state.nextLayerId++,
+    type:         'text',
     text:         '',
     color:        '#ff6b57',
     x: 50, y: 65,
@@ -37,6 +38,40 @@ els.addLayer.addEventListener('click', () => {
   });
   renderLayerControls();
   setStatus(t('statusLayerAdded'));
+});
+
+// ── Image layer add ───────────────────────────────────────────
+els.addImageLayer.addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type   = 'file';
+  input.accept = 'image/*';
+  input.addEventListener('change', () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      state.layers.push({
+        id:             state.nextLayerId++,
+        type:           'image',
+        imageSrc:       String(reader.result || ''),
+        imageName:      file.name,
+        widthPx:        300,
+        heightPx:       0,
+        x: 50, y: 50,
+        align:          'left',
+        color:          '#ffffff',
+        tint:           false,
+        alphaThreshold: 64,
+        scroll:         false, speed:   300,
+        blink:          false, blinkMs: 900,
+        offset:         0
+      });
+      renderLayerControls();
+      setStatus(t('statusImageLayerAdded'));
+    };
+    reader.readAsDataURL(file);
+  });
+  input.click();
 });
 
 // ── Global settings ───────────────────────────────────────────

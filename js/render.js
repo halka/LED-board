@@ -1,7 +1,7 @@
 import { positive, tone, fontFamilyCss } from './utils.js';
 import { els, ctx, maskCanvas, maskCtx, syncCanvas } from './dom.js';
 import { state } from './state.js';
-import { normalizeLayer, textMetricsPx } from './layers.js';
+import { normalizeLayer, imageMetricsPx, layerMetricsPx, ensureImageElement } from './layers.js';
 import { toConfig } from './config.js';
 
 export function shouldShowLayer(layer, now) {
@@ -19,14 +19,18 @@ export function anchorXToStartX(anchorX, align, width) {
 export function hitTestLayer(x, y) {
   for (let i = state.layers.length - 1; i >= 0; i -= 1) {
     const layer   = normalizeLayer(state.layers[i]);
-    const metrics = textMetricsPx(layer);
-    const anchorX = layer.x + layer.offset;
+    const metrics = layerMetricsPx(layer);
+    const anchorX = layer.x + (state.layers[i].offset || 0);
     const startX  = anchorXToStartX(anchorX, layer.align, metrics.width);
     if (x >= startX && x <= startX + metrics.width && y >= layer.y && y <= layer.y + metrics.height) {
       return state.layers[i];
     }
   }
   return null;
+}
+
+function toHexComponent(v) {
+  return v.toString(16).padStart(2, '0');
 }
 
 export function buildColorCells(config, now) {
@@ -52,8 +56,36 @@ export function buildColorCells(config, now) {
     const layer = normalizeLayer(rawLayer);
     if (!shouldShowLayer(layer, now)) return;
 
+    if (layer.type === 'image') {
+      if (!layer.imageSrc) return;
+      const img = ensureImageElement(layer);
+      if (!img || !img.complete || !img.naturalWidth) return;
+
+      const metrics = imageMetricsPx(layer);
+      const wCells  = Math.max(1, metrics.width  / step);
+      const hCells  = Math.max(1, metrics.height / step);
+      const anchorXCells = (layer.x + (rawLayer.offset || 0)) / step;
+      const startXCells  = anchorXToStartX(anchorXCells, layer.align, wCells);
+      const yCells       = layer.y / step;
+
+      maskCtx.clearRect(0, 0, cols, rows);
+      maskCtx.imageSmoothingEnabled = false;
+      maskCtx.drawImage(img, startXCells, yCells, wCells, hCells);
+
+      const data = maskCtx.getImageData(0, 0, cols, rows).data;
+      const threshold = layer.alphaThreshold;
+      for (let i = 0; i < colors.length; i += 1) {
+        if (data[i * 4 + 3] > threshold) {
+          colors[i] = layer.tint
+            ? layer.color
+            : `#${toHexComponent(data[i * 4])}${toHexComponent(data[i * 4 + 1])}${toHexComponent(data[i * 4 + 2])}`;
+        }
+      }
+      return;
+    }
+
     const fontCells = Math.max(1, layer.fontPx / step);
-    const xCells    = (layer.x + layer.offset) / step;
+    const xCells    = (layer.x + (rawLayer.offset || 0)) / step;
     const yCells    = layer.y / step;
     const fontStr   = `${layer.fontWeight} ${fontCells}px ${fontFamilyCss(layer.fontFamily, layer.customFont)}`;
 
@@ -119,8 +151,10 @@ export function tick(now) {
       if (!layer.scroll) return;
       const item       = normalizeLayer(layer);
       layer.offset    -= item.speed * dt;
-      const resetWidth = config.width + textMetricsPx(item).width + item.fontPx;
-      if (layer.offset < -resetWidth) layer.offset = config.width + item.fontPx;
+      const metrics    = layerMetricsPx(item);
+      const extra      = item.type === 'image' ? metrics.width : item.fontPx;
+      const resetWidth = config.width + metrics.width + extra;
+      if (layer.offset < -resetWidth) layer.offset = config.width + extra;
     });
   }
 
