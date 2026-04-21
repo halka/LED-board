@@ -9,7 +9,7 @@ import { t } from './i18n.js';
 // パラメタが変化したらスクロール中レイヤーのプレビュー位置をリセット
 const SCROLL_RESET_KEYS = new Set([
   'text', 'fontPx', 'fontWeight', 'fontFamily', 'align', 'x', 'customFont', 'speed',
-  'widthPx', 'heightPx', 'imageSrc'
+  'widthPx', 'heightPx', 'imageSrc', 'cornerRadius'
 ]);
 
 // ── Status / Progress ─────────────────────────────────────────
@@ -39,7 +39,7 @@ export function updateLayer(id, key, rawValue, inputType = 'text') {
   } else if (key === 'color' || key === 'outlineColor') {
     layer[key] = safeHex(String(rawValue).trim(), layer[key] || '#ffffff');
   } else if (['x', 'y', 'fontPx', 'fontWeight', 'speed', 'blinkMs', 'outlineWidth',
-              'widthPx', 'heightPx', 'alphaThreshold'].includes(key)) {
+              'widthPx', 'heightPx', 'alphaThreshold', 'cornerRadius'].includes(key)) {
     layer[key] = Number(rawValue);
   } else {
     layer[key] = rawValue;
@@ -462,6 +462,106 @@ function renderImageLayerCard(item, index) {
   `;
 }
 
+// ── Layer card: fill ──────────────────────────────────────────
+function renderFillLayerCard(item, index) {
+  return `
+    ${layerHeadHtml(item, index, 'fillLayerTitle')}
+
+    <div class="grid four">
+      <label class="field">
+        <span>${t('fillColor')}</span>
+        <div class="color-row">
+          <input class="layer-color" data-id="${item.id}" data-key="color" type="color" value="${item.color}">
+          <input class="layer-hex"   data-id="${item.id}" data-key="color" type="text"  value="${item.color}">
+        </div>
+      </label>
+      <label class="field">
+        <span>${t('imageWidth')}</span>
+        <input class="layer-number" data-id="${item.id}" data-key="widthPx" type="number" value="${item.widthPx}" step="1">
+      </label>
+      <label class="field">
+        <span>${t('fillHeight')}</span>
+        <input class="layer-number" data-id="${item.id}" data-key="heightPx" type="number" value="${item.heightPx}" step="1">
+      </label>
+      <label class="field">
+        <span>${t('cornerRadius')}</span>
+        <input class="layer-number" data-id="${item.id}" data-key="cornerRadius" type="number" value="${item.cornerRadius}" step="1" min="0">
+      </label>
+    </div>
+
+    <div class="grid three">
+      <label class="field">
+        <span>${t('xPos')}</span>
+        <input class="layer-number" data-id="${item.id}" data-key="x" type="number" value="${item.x}" step="1">
+      </label>
+      <label class="field">
+        <span>${t('yPos')}</span>
+        <input class="layer-number" data-id="${item.id}" data-key="y" type="number" value="${item.y}" step="1">
+      </label>
+      <label class="field">
+        <span>${t('align')}</span>
+        <select class="layer-select" data-id="${item.id}" data-key="align">
+          <option value="left"   ${item.align === 'left'   ? 'selected' : ''}>${t('alignLeft')}</option>
+          <option value="center" ${item.align === 'center' ? 'selected' : ''}>${t('alignCenter')}</option>
+          <option value="right"  ${item.align === 'right'  ? 'selected' : ''}>${t('alignRight')}</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="check-list">
+      <label class="field">
+        <span>${t('outline')}</span>
+        <label class="switch-row">
+          <input class="layer-check" data-id="${item.id}" data-key="outline" type="checkbox" ${item.outline ? 'checked' : ''}>
+          <span>${t('enabled')}</span>
+        </label>
+      </label>
+      <label class="field">
+        <span>${t('outlineWidth')}</span>
+        <input class="layer-number" data-id="${item.id}" data-key="outlineWidth" type="number" value="${item.outlineWidth}" step="1">
+      </label>
+    </div>
+
+    <div class="grid two">
+      <label class="field">
+        <span>${t('outlineColor')}</span>
+        <div class="color-row">
+          <input class="layer-outline-color" data-id="${item.id}" data-key="outlineColor" type="color" value="${item.outlineColor}">
+          <input class="layer-outline-hex"   data-id="${item.id}" data-key="outlineColor" type="text"  value="${item.outlineColor}">
+        </div>
+      </label>
+    </div>
+
+    <div class="check-list">
+      <label class="field">
+        <span>${t('scroll')}</span>
+        <label class="switch-row">
+          <input class="layer-check" data-id="${item.id}" data-key="scroll" type="checkbox" ${item.scroll ? 'checked' : ''}>
+          <span>${t('enabled')}</span>
+        </label>
+      </label>
+      <label class="field">
+        <span>${t('blink')}</span>
+        <label class="switch-row">
+          <input class="layer-check" data-id="${item.id}" data-key="blink" type="checkbox" ${item.blink ? 'checked' : ''}>
+          <span>${t('enabled')}</span>
+        </label>
+      </label>
+    </div>
+
+    <div class="grid two">
+      <label class="field">
+        <span>${t('scrollSpeed')}</span>
+        <input class="layer-number" data-id="${item.id}" data-key="speed" type="number" value="${item.speed}" step="1">
+      </label>
+      <label class="field">
+        <span>${t('blinkMs')}</span>
+        <input class="layer-number" data-id="${item.id}" data-key="blinkMs" type="number" value="${item.blinkMs}" step="1">
+      </label>
+    </div>
+  `;
+}
+
 // ── Layer UI ──────────────────────────────────────────────────
 export function renderLayerControls() {
   els.layers.innerHTML = '';
@@ -469,9 +569,9 @@ export function renderLayerControls() {
     const item = normalizeLayer(layer);
     const wrap = document.createElement('div');
     wrap.className = 'layer-card';
-    wrap.innerHTML = item.type === 'image'
-      ? renderImageLayerCard(item, index)
-      : renderTextLayerCard(item, index);
+    if (item.type === 'image')      wrap.innerHTML = renderImageLayerCard(item, index);
+    else if (item.type === 'fill')  wrap.innerHTML = renderFillLayerCard(item, index);
+    else                            wrap.innerHTML = renderTextLayerCard(item, index);
     els.layers.appendChild(wrap);
   });
 

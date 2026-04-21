@@ -1,7 +1,7 @@
 import { positive, tone, fontFamilyCss } from './utils.js';
 import { els, ctx, maskCanvas, maskCtx, syncCanvas } from './dom.js';
 import { state } from './state.js';
-import { normalizeLayer, imageMetricsPx, layerMetricsPx, ensureImageElement } from './layers.js';
+import { normalizeLayer, imageMetricsPx, fillMetricsPx, layerMetricsPx, ensureImageElement } from './layers.js';
 import { toConfig } from './config.js';
 
 export function shouldShowLayer(layer, now) {
@@ -80,6 +80,46 @@ export function buildColorCells(config, now) {
             ? layer.color
             : `#${toHexComponent(data[i * 4])}${toHexComponent(data[i * 4 + 1])}${toHexComponent(data[i * 4 + 2])}`;
         }
+      }
+      return;
+    }
+
+    if (layer.type === 'fill') {
+      const metrics = fillMetricsPx(layer);
+      const wCells  = Math.max(1, metrics.width  / step);
+      const hCells  = Math.max(1, metrics.height / step);
+      const anchorXCells = (layer.x + (rawLayer.offset || 0)) / step;
+      const startXCells  = anchorXToStartX(anchorXCells, layer.align, wCells);
+      const yCells       = layer.y / step;
+      const radiusCells  = Math.max(0, Math.min(
+        Math.min(wCells, hCells) / 2,
+        (layer.cornerRadius || 0) / step
+      ));
+
+      maskCtx.clearRect(0, 0, cols, rows);
+      maskCtx.fillStyle = '#fff';
+      maskCtx.beginPath();
+      if (radiusCells > 0 && typeof maskCtx.roundRect === 'function') {
+        maskCtx.roundRect(startXCells, yCells, wCells, hCells, radiusCells);
+      } else {
+        maskCtx.rect(startXCells, yCells, wCells, hCells);
+      }
+      maskCtx.fill();
+      mergeColor(layer.color, true);
+
+      if (layer.outline && positive(layer.outlineWidth, 4) > 0) {
+        maskCtx.clearRect(0, 0, cols, rows);
+        maskCtx.strokeStyle = '#fff';
+        maskCtx.lineWidth   = Math.max(1, layer.outlineWidth / step);
+        maskCtx.lineJoin    = 'round';
+        maskCtx.beginPath();
+        if (radiusCells > 0 && typeof maskCtx.roundRect === 'function') {
+          maskCtx.roundRect(startXCells, yCells, wCells, hCells, radiusCells);
+        } else {
+          maskCtx.rect(startXCells, yCells, wCells, hCells);
+        }
+        maskCtx.stroke();
+        mergeColor(layer.outlineColor, true);
       }
       return;
     }

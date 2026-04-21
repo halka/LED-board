@@ -74,6 +74,26 @@ els.addImageLayer.addEventListener('click', () => {
   input.click();
 });
 
+// ── Fill layer add ────────────────────────────────────────────
+els.addFillLayer.addEventListener('click', () => {
+  state.layers.push({
+    id:           state.nextLayerId++,
+    type:         'fill',
+    color:        '#c83c3c',
+    x: 40, y: 40,
+    widthPx:      320,
+    heightPx:     220,
+    cornerRadius: 0,
+    align:        'left',
+    outline:      false, outlineColor: '#ffffff', outlineWidth: 4,
+    scroll:       false, speed:   300,
+    blink:        false, blinkMs: 900,
+    offset:       0
+  });
+  renderLayerControls();
+  setStatus(t('statusFillLayerAdded'));
+});
+
 // ── Global settings ───────────────────────────────────────────
 [els.width, els.height, els.dotSize, els.gap, els.fps].forEach((node) => {
   node.addEventListener('input', () => {
