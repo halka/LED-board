@@ -24,6 +24,7 @@ export const els = {
   layers:             $('layers'),
   addLayer:           $('addLayer'),
   addImageLayer:      $('addImageLayer'),
+  addFillLayer:       $('addFillLayer'),
   // control modal
   toggle:             $('toggle'),
   reset:              $('reset'),

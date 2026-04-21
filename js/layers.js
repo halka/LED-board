@@ -4,7 +4,7 @@ import { ctx } from './dom.js';
 const imageCache = new Map();
 
 export function normalizeLayer(layer) {
-  const type = layer.type === 'image' ? 'image' : 'text';
+  const type = (layer.type === 'image' || layer.type === 'fill') ? layer.type : 'text';
   const base = {
     ...layer,
     type,
@@ -27,6 +27,10 @@ export function normalizeLayer(layer) {
     base.heightPx       = finite(layer.heightPx, 0);
     base.tint           = Boolean(layer.tint);
     base.alphaThreshold = Math.max(0, Math.min(255, finite(layer.alphaThreshold, 64)));
+  } else if (type === 'fill') {
+    base.widthPx      = positive(layer.widthPx, 300);
+    base.heightPx     = positive(layer.heightPx, 120);
+    base.cornerRadius = Math.max(0, finite(layer.cornerRadius, 0));
   }
   return base;
 }
@@ -64,8 +68,15 @@ export function imageMetricsPx(layer) {
   return { width, height };
 }
 
+export function fillMetricsPx(layer) {
+  const item = normalizeLayer(layer);
+  return { width: positive(item.widthPx, 300), height: positive(item.heightPx, 120) };
+}
+
 export function layerMetricsPx(layer) {
-  return layer.type === 'image' ? imageMetricsPx(layer) : textMetricsPx(layer);
+  if (layer.type === 'image') return imageMetricsPx(layer);
+  if (layer.type === 'fill')  return fillMetricsPx(layer);
+  return textMetricsPx(layer);
 }
 
 export function getLayerAnchorForLeftEdge(leftEdge, align, textWidth) {
