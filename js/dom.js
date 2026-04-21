@@ -6,6 +6,7 @@ const $ = (id) => document.getElementById(id);
 export const els = {
   // preview
   screen:             $('screen'),
+  overlay:            $('overlay'),
   meta:               $('meta'),
   status:             $('status'),
   layerStat:          $('layerStat'),
@@ -47,6 +48,7 @@ export const els = {
 };
 
 export const ctx = els.screen.getContext('2d');
+export const octx = els.overlay.getContext('2d');
 export const maskCanvas = document.createElement('canvas');
 export const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
 
@@ -54,6 +56,10 @@ export function syncCanvas(config) {
   if (els.screen.width !== config.width || els.screen.height !== config.height) {
     els.screen.width = config.width;
     els.screen.height = config.height;
+  }
+  if (els.overlay.width !== config.width || els.overlay.height !== config.height) {
+    els.overlay.width = config.width;
+    els.overlay.height = config.height;
   }
   els.meta.textContent       = `${config.width} × ${config.height} px`;
   els.dotStat.textContent    = `${config.dotSize} px / gap ${config.gap} px`;

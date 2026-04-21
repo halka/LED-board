@@ -54,6 +54,14 @@ export function updateLayer(id, key, rawValue, inputType = 'text') {
   setStatus(t('statusLayerUpdated'));
 }
 
+export function layerDisplayName(layer) {
+  if (layer.name && layer.name.trim()) return layer.name;
+  if (layer.type === 'image') return layer.imageName || t('imageLayerDefaultName');
+  if (layer.type === 'fill')  return t('fillLayerDefaultName');
+  const text = (layer.text || '').trim();
+  return text ? text.slice(0, 24) : t('textLayerDefaultName');
+}
+
 // ── Layer order ───────────────────────────────────────────────
 export function moveLayer(id, mode) {
   const index = state.layers.findIndex((item) => item.id === id);
@@ -113,6 +121,21 @@ export function bindLayerControlEvents() {
   els.layers.querySelectorAll('.layer-custom-font').forEach((node) => {
     node.addEventListener('input', (e) =>
       updateLayer(Number(e.target.dataset.id), 'customFont', e.target.value));
+  });
+
+  els.layers.querySelectorAll('.layer-name-input').forEach((node) => {
+    node.addEventListener('input', (e) => {
+      const id    = Number(e.target.dataset.id);
+      const layer = state.layers.find((item) => item.id === id);
+      if (!layer) return;
+      layer.name = e.target.value;
+      const row = els.layers.querySelector(`.layer-row[data-id="${id}"] .layer-row-name`);
+      if (row) {
+        const display = layerDisplayName(layer);
+        row.textContent = display;
+        row.setAttribute('title', display);
+      }
+    });
   });
 
   els.layers.querySelectorAll('.layer-check').forEach((node) => {
@@ -179,6 +202,7 @@ export function bindLayerControlEvents() {
     node.addEventListener('click', (e) => {
       const id = Number(e.target.dataset.id);
       state.layers = state.layers.filter((layer) => layer.id !== id);
+      if (state.selectedLayerId === id) state.selectedLayerId = null;
       renderLayerControls();
       setStatus(t('statusLayerDeleted'));
     });
@@ -211,11 +235,16 @@ export function bindLayerControlEvents() {
   });
 }
 
-// ── Layer card: shared header ─────────────────────────────────
+// ── Layer card: shared header (detail panel) ──────────────────
 function layerHeadHtml(item, index, titleKey) {
+  const name = layerDisplayName(item);
   return `
     <div class="layer-head">
-      <div class="layer-title">${t(titleKey, { 0: index + 1 })} <span class="muted">${t('layerOrder', { 0: index + 1, 1: state.layers.length })}</span></div>
+      <div class="layer-title">
+        <input class="layer-name-input" data-id="${item.id}" type="text"
+          value="${escapeHtml(name)}" placeholder="${escapeHtml(t(titleKey, { 0: index + 1 }))}">
+        <span class="muted">${t('layerOrder', { 0: index + 1, 1: state.layers.length })}</span>
+      </div>
       <div class="actions-inline">
         <button class="btn btn-sub btn-small layer-send-back"   type="button" data-id="${item.id}" ${index === 0 ? 'disabled' : ''}>${t('toBack')}</button>
         <button class="btn btn-sub btn-small layer-backward"    type="button" data-id="${item.id}" ${index === 0 ? 'disabled' : ''}>${t('backward')}</button>
@@ -562,24 +591,174 @@ function renderFillLayerCard(item, index) {
   `;
 }
 
+// ── Layer row (compact list item) ─────────────────────────────
+function renderLayerRow(item) {
+  const name   = escapeHtml(layerDisplayName(item));
+  const selCls = state.selectedLayerId === item.id ? ' selected' : '';
+  const visCls = item.visible === false ? ' hidden-layer' : '';
+  const typeTag = item.type === 'image' ? 'I' : item.type === 'fill' ? 'F' : 'T';
+
+  let thumbHtml;
+  if (item.type === 'image') {
+    thumbHtml = item.imageSrc
+      ? `<img src="${escapeHtml(item.imageSrc)}" alt="">`
+      : `<div class="layer-thumb-empty"></div>`;
+  } else if (item.type === 'fill') {
+    const radius = Math.min(12, Math.max(0, (item.cornerRadius || 0) / 20));
+    const border = item.outline ? `box-shadow: inset 0 0 0 2px ${item.outlineColor};` : '';
+    thumbHtml = `<div class="layer-thumb-fill" style="background:${item.color};border-radius:${radius}px;${border}"></div>`;
+  } else {
+    thumbHtml = `<div class="layer-thumb-text" style="color:${item.color}">Aa</div>`;
+  }
+
+  return `
+    <li class="layer-row${selCls}${visCls}" data-id="${item.id}" draggable="true">
+      <span class="layer-drag-grip" aria-hidden="true">⋮⋮</span>
+      <button class="layer-vis" type="button" data-id="${item.id}" title="${t('toggleVisibility')}" aria-label="${t('toggleVisibility')}">
+        ${item.visible === false ? '◌' : '●'}
+      </button>
+      <div class="layer-thumb">${thumbHtml}</div>
+      <div class="layer-row-name" title="${name}">${name}</div>
+      <span class="layer-type-tag">${typeTag}</span>
+      <button class="layer-row-remove" type="button" data-id="${item.id}" title="${t('delete')}" aria-label="${t('delete')}"
+        ${state.layers.length === 1 ? 'disabled' : ''}>✕</button>
+    </li>
+  `;
+}
+
+function renderDetailBody(item, index) {
+  if (item.type === 'image') return renderImageLayerCard(item, index);
+  if (item.type === 'fill')  return renderFillLayerCard(item, index);
+  return renderTextLayerCard(item, index);
+}
+
 // ── Layer UI ──────────────────────────────────────────────────
 export function renderLayerControls() {
-  els.layers.innerHTML = '';
-  state.layers.forEach((layer, index) => {
-    const item = normalizeLayer(layer);
-    const wrap = document.createElement('div');
-    wrap.className = 'layer-card';
-    if (item.type === 'image')      wrap.innerHTML = renderImageLayerCard(item, index);
-    else if (item.type === 'fill')  wrap.innerHTML = renderFillLayerCard(item, index);
-    else                            wrap.innerHTML = renderTextLayerCard(item, index);
-    els.layers.appendChild(wrap);
-  });
+  const selected = state.layers.find((l) => l.id === state.selectedLayerId);
+  if (state.selectedLayerId != null && !selected) state.selectedLayerId = null;
 
+  // Top-of-list == top of z-order == last in state.layers.
+  const rowsHtml = state.layers
+    .map((layer) => renderLayerRow(normalizeLayer(layer)))
+    .reverse()
+    .join('');
+
+  let detailHtml = '';
+  if (selected) {
+    const index = state.layers.findIndex((l) => l.id === selected.id);
+    const item  = normalizeLayer(selected);
+    detailHtml = `<div class="layer-card">${renderDetailBody(item, index)}</div>`;
+  } else {
+    detailHtml = `<p class="muted layer-detail-empty">${t('noLayerSelectedHint')}</p>`;
+  }
+
+  els.layers.innerHTML = `
+    <ul class="layer-list" id="layerList">${rowsHtml}</ul>
+    <div class="layer-detail">${detailHtml}</div>
+  `;
+
+  bindLayerRowEvents();
   bindLayerControlEvents();
   syncCanvas(toConfig());
   state.layers.forEach((layer) => {
     if (layer.fontFamily === 'custom') populateLocalFontDatalist(layer.id);
   });
+  draw();
+}
+
+// Lighter-weight update: same as renderLayerControls (kept as alias for clarity).
+export function updateSelectedLayerUI() {
+  renderLayerControls();
+}
+
+// ── Row events (select / visibility / delete / drag-reorder) ──
+function bindLayerRowEvents() {
+  const list = els.layers.querySelector('#layerList');
+  if (!list) return;
+
+  list.querySelectorAll('.layer-row').forEach((row) => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.layer-vis, .layer-row-remove, .layer-drag-grip')) return;
+      const id = Number(row.dataset.id);
+      if (state.selectedLayerId === id) return;
+      state.selectedLayerId = id;
+      renderLayerControls();
+    });
+  });
+
+  list.querySelectorAll('.layer-vis').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id    = Number(btn.dataset.id);
+      const layer = state.layers.find((l) => l.id === id);
+      if (!layer) return;
+      layer.visible = layer.visible === false;
+      renderLayerControls();
+      setStatus(layer.visible ? t('statusLayerShown') : t('statusLayerHidden'));
+    });
+  });
+
+  list.querySelectorAll('.layer-row-remove').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (btn.disabled) return;
+      const id = Number(btn.dataset.id);
+      state.layers = state.layers.filter((l) => l.id !== id);
+      if (state.selectedLayerId === id) state.selectedLayerId = null;
+      renderLayerControls();
+      setStatus(t('statusLayerDeleted'));
+    });
+  });
+
+  // Drag-reorder (HTML5 DnD).
+  let draggedId = null;
+  list.querySelectorAll('.layer-row').forEach((row) => {
+    row.addEventListener('dragstart', (e) => {
+      draggedId = Number(row.dataset.id);
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', String(draggedId)); } catch {}
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      list.querySelectorAll('.drop-before, .drop-after').forEach((n) =>
+        n.classList.remove('drop-before', 'drop-after'));
+      draggedId = null;
+    });
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const rect   = row.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height / 2;
+      list.querySelectorAll('.drop-before, .drop-after').forEach((n) =>
+        n.classList.remove('drop-before', 'drop-after'));
+      row.classList.add(before ? 'drop-before' : 'drop-after');
+      e.dataTransfer.dropEffect = 'move';
+    });
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const targetId = Number(row.dataset.id);
+      if (draggedId == null || draggedId === targetId) return;
+      const rect   = row.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height / 2;
+      reorderLayers(draggedId, targetId, before);
+    });
+  });
+}
+
+// Move dragged layer so that, visually, it ends up ABOVE or BELOW the target row.
+// The list is rendered in reverse array order, so "above target visually" means
+// "placed at a higher array index than target".
+function reorderLayers(draggedId, targetId, dropVisuallyAbove) {
+  const fromIdx = state.layers.findIndex((l) => l.id === draggedId);
+  if (fromIdx < 0) return;
+  const [dragged] = state.layers.splice(fromIdx, 1);
+  const targetIdx = state.layers.findIndex((l) => l.id === targetId);
+  if (targetIdx < 0) { state.layers.splice(fromIdx, 0, dragged); return; }
+  // Visually above target → go after target in array (higher index).
+  const insertAt = dropVisuallyAbove ? targetIdx + 1 : targetIdx;
+  state.layers.splice(insertAt, 0, dragged);
+  renderLayerControls();
+  setStatus(t('statusLayerReordered'));
 }
 
 // ── Global color binding ──────────────────────────────────────
