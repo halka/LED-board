@@ -1,10 +1,11 @@
 import { positive, tone, fontFamilyCss } from './utils.js';
-import { els, ctx, maskCanvas, maskCtx, syncCanvas } from './dom.js';
+import { els, ctx, octx, maskCanvas, maskCtx, syncCanvas } from './dom.js';
 import { state } from './state.js';
 import { normalizeLayer, imageMetricsPx, fillMetricsPx, layerMetricsPx, ensureImageElement } from './layers.js';
 import { toConfig } from './config.js';
 
 export function shouldShowLayer(layer, now) {
+  if (layer.visible === false) return false;
   if (!layer.blink) return true;
   const ms = positive(layer.blinkMs, 900);
   return (now % (ms * 2)) < ms;
@@ -16,15 +17,49 @@ export function anchorXToStartX(anchorX, align, width) {
   return anchorX;
 }
 
+// Device-pixel bounding box of a layer (honoring current offset/align/metrics).
+export function getLayerBox(rawLayer) {
+  const layer   = normalizeLayer(rawLayer);
+  const metrics = layerMetricsPx(layer);
+  const anchorX = layer.x + (rawLayer.offset || 0);
+  const startX  = anchorXToStartX(anchorX, layer.align, metrics.width);
+  return { startX, startY: layer.y, width: metrics.width, height: metrics.height };
+}
+
 export function hitTestLayer(x, y) {
   for (let i = state.layers.length - 1; i >= 0; i -= 1) {
-    const layer   = normalizeLayer(state.layers[i]);
-    const metrics = layerMetricsPx(layer);
-    const anchorX = layer.x + (state.layers[i].offset || 0);
-    const startX  = anchorXToStartX(anchorX, layer.align, metrics.width);
-    if (x >= startX && x <= startX + metrics.width && y >= layer.y && y <= layer.y + metrics.height) {
-      return state.layers[i];
+    const layer = state.layers[i];
+    if (layer.visible === false) continue;
+    const box = getLayerBox(layer);
+    if (x >= box.startX && x <= box.startX + box.width &&
+        y >= box.startY && y <= box.startY + box.height) {
+      return layer;
     }
+  }
+  return null;
+}
+
+// 8 resize handles, in device-pixel coordinates.
+export function getHandlePositions(box) {
+  const { startX, startY, width, height } = box;
+  const midX = startX + width  / 2;
+  const midY = startY + height / 2;
+  return [
+    { name: 'nw', x: startX,         y: startY },
+    { name: 'n',  x: midX,           y: startY },
+    { name: 'ne', x: startX + width, y: startY },
+    { name: 'e',  x: startX + width, y: midY },
+    { name: 'se', x: startX + width, y: startY + height },
+    { name: 's',  x: midX,           y: startY + height },
+    { name: 'sw', x: startX,         y: startY + height },
+    { name: 'w',  x: startX,         y: midY }
+  ];
+}
+
+export function hitTestHandle(x, y, box, hitRadius) {
+  const handles = getHandlePositions(box);
+  for (const h of handles) {
+    if (Math.abs(x - h.x) <= hitRadius && Math.abs(y - h.y) <= hitRadius) return h.name;
   }
   return null;
 }
@@ -179,6 +214,37 @@ export function draw() {
       ctx.fill();
     }
   }
+
+  drawOverlay(config);
+}
+
+export const HANDLE_SIZE = 14; // device px, square handle side
+export const HANDLE_HIT_RADIUS = 14;
+
+function drawOverlay(config) {
+  octx.clearRect(0, 0, config.width, config.height);
+  if (state.selectedLayerId == null) return;
+  const layer = state.layers.find((l) => l.id === state.selectedLayerId);
+  if (!layer) return;
+
+  const box = getLayerBox(layer);
+  const half = HANDLE_SIZE / 2;
+
+  octx.save();
+  octx.strokeStyle = '#3aa0ff';
+  octx.lineWidth   = 2;
+  octx.setLineDash([6, 4]);
+  octx.strokeRect(box.startX, box.startY, box.width, box.height);
+  octx.setLineDash([]);
+
+  octx.fillStyle   = '#ffffff';
+  octx.strokeStyle = '#3aa0ff';
+  octx.lineWidth   = 2;
+  getHandlePositions(box).forEach((h) => {
+    octx.fillRect(h.x - half, h.y - half, HANDLE_SIZE, HANDLE_SIZE);
+    octx.strokeRect(h.x - half, h.y - half, HANDLE_SIZE, HANDLE_SIZE);
+  });
+  octx.restore();
 }
 
 export function tick(now) {
