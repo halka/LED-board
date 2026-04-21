@@ -18,7 +18,9 @@ export function normalizeLayer(layer) {
     blinkMs:      positive(layer.blinkMs, 900),
     outlineWidth: positive(layer.outlineWidth, 4),
     fontFamily:   layer.fontFamily || 'biz',
-    customFont:   layer.customFont || ''
+    customFont:   layer.customFont || '',
+    name:         typeof layer.name === 'string' ? layer.name : '',
+    visible:      layer.visible !== false
   };
   if (type === 'image') {
     base.imageSrc       = layer.imageSrc || '';
